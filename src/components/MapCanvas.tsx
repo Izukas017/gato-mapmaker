@@ -1,0 +1,919 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { extractOccluderSegments } from '../engine/lighting';
+import { uid } from '../engine/presets';
+import { getPropDefinition, getPropSprite } from '../engine/props';
+import { renderMapScene } from '../engine/renderer';
+import { useMapStore } from '../store/useMapStore';
+import type { MapLevel, Point, SelectionRef } from '../types/map';
+
+function pointInPolygon(pt: Point, poly: Point[]): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x;
+    const yi = poly[i].y;
+    const xj = poly[j].x;
+    const yj = poly[j].y;
+    const intersect =
+      yi > pt.y !== yj > pt.y &&
+      pt.x < ((xj - xi) * (pt.y - yi)) / (yj - yi + 1e-9) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function distToSegment(p: Point, a: Point, b: Point): { dist: number; proj: Point; angle: number } {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 1e-8) {
+    return { dist: Math.hypot(p.x - a.x, p.y - a.y), proj: a, angle: 0 };
+  }
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
+  const proj = { x: a.x + t * dx, y: a.y + t * dy };
+  return {
+    dist: Math.hypot(p.x - proj.x, p.y - proj.y),
+    proj,
+    angle: Math.atan2(dy, dx),
+  };
+}
+
+function snapPoint(pt: Point, snap: boolean, sub: number): Point {
+  if (!snap) return pt;
+  return {
+    x: Math.round(pt.x * sub) / sub,
+    y: Math.round(pt.y * sub) / sub,
+  };
+}
+
+function findNearestWallPoint(pt: Point, level: MapLevel): { pt: Point; angle: number } | null {
+  const segs = extractOccluderSegments(level);
+  let bestDist = 0.85;
+  let best: { pt: Point; angle: number } | null = null;
+  for (const s of segs) {
+    const res = distToSegment(pt, { x: s.ax, y: s.ay }, { x: s.bx, y: s.by });
+    if (res.dist < bestDist) {
+      bestDist = res.dist;
+      best = { pt: res.proj, angle: res.angle };
+    }
+  }
+  return best;
+}
+
+export function MapCanvas() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const doc = useMapStore((s) => s.doc);
+  const activeTool = useMapStore((s) => s.activeTool);
+  const toolSettings = useMapStore((s) => s.toolSettings);
+  const selection = useMapStore((s) => s.selection);
+  const zoom = useMapStore((s) => s.zoom);
+  const panX = useMapStore((s) => s.panX);
+  const panY = useMapStore((s) => s.panY);
+
+  const setViewport = useMapStore((s) => s.setViewport);
+  const setSelection = useMapStore((s) => s.setSelection);
+  const setCursorTile = useMapStore((s) => s.setCursorTile);
+  const updateToolSettings = useMapStore((s) => s.updateToolSettings);
+
+  // Interactive transient drawing state
+  const [hoverTile, setHoverTile] = useState<Point | null>(null);
+  const [draftPoints, setDraftPoints] = useState<Point[]>([]);
+  const [rectStart, setRectStart] = useState<Point | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [spaceDown, setSpaceDown] = useState(false);
+  const [renderTick, setRenderTick] = useState(0);
+
+  const dragRef = useRef<{
+    mode: 'none' | 'pan' | 'move_sel' | 'terrain' | 'water' | 'scatter';
+    startScreenX: number;
+    startScreenY: number;
+    startPanX: number;
+    startPanY: number;
+    lastTile: Point;
+    strokePoints: Point[];
+    moved: boolean;
+  }>({
+    mode: 'none',
+    startScreenX: 0,
+    startScreenY: 0,
+    startPanX: 0,
+    startPanY: 0,
+    lastTile: { x: 0, y: 0 },
+    strokePoints: [],
+    moved: false,
+  });
+
+  const activeLevel =
+    doc.levels.find((l) => l.id === doc.activeLevelId) ?? doc.levels[0];
+
+  const screenToTile = useCallback(
+    (clientX: number, clientY: number): Point => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return { x: 0, y: 0 };
+      const sx = clientX - rect.left;
+      const sy = clientY - rect.top;
+      const ppg = doc.pixelsPerGrid * zoom;
+      return {
+        x: (sx - panX) / ppg,
+        y: (sy - panY) / ppg,
+      };
+    },
+    [doc.pixelsPerGrid, zoom, panX, panY]
+  );
+
+  // Auto-center map on first load or map size change
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 100 || rect.height < 100) return;
+    const mapPxW = doc.width * doc.pixelsPerGrid;
+    const mapPxH = doc.height * doc.pixelsPerGrid;
+    const fitZoom = Math.min(
+      (rect.width - 60) / mapPxW,
+      (rect.height - 60) / mapPxH,
+      1.1
+    );
+    const z = Math.max(0.25, Math.min(2, fitZoom));
+    const px = (rect.width - mapPxW * z) / 2;
+    const py = (rect.height - mapPxH * z) / 2;
+    setViewport(z, px, py);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc.width, doc.height, doc.name]);
+
+  // Clear draft geometry when switching tools
+  useEffect(() => {
+    setDraftPoints([]);
+    setRectStart(null);
+  }, [activeTool]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) {
+        return;
+      }
+      if (e.code === 'Space') {
+        setSpaceDown(true);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) useMapStore.getState().redo();
+        else useMapStore.getState().undo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        useMapStore.getState().redo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        useMapStore.getState().duplicateSelected();
+        return;
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        useMapStore.getState().deleteSelected();
+        return;
+      }
+      if (e.key === 'Escape') {
+        setDraftPoints([]);
+        setRectStart(null);
+        setSelection(null);
+        return;
+      }
+      if (e.key === 'Enter' && draftPoints.length >= 2) {
+        commitDraftPolyline();
+        return;
+      }
+      // Single-key tool shortcuts
+      const toolMap: Record<string, typeof activeTool> = {
+        v: 'select',
+        t: 'terrain',
+        w: 'water',
+        b: 'building',
+        l: 'wall',
+        p: 'portal',
+        h: 'path',
+        o: 'object',
+        i: 'light',
+        r: 'roof',
+      };
+      const lower = e.key.toLowerCase();
+      if (!e.ctrlKey && !e.altKey && !e.metaKey && toolMap[lower]) {
+        useMapStore.getState().setTool(toolMap[lower]);
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') setSpaceDown(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  });
+
+  const commitDraftPolyline = useCallback(() => {
+    const store = useMapStore.getState();
+    const s = store.toolSettings;
+    if (activeTool === 'building' && draftPoints.length >= 3) {
+      store.addRoom({
+        id: uid('room'),
+        points: draftPoints,
+        floor: s.floorPattern,
+        wallStyle: s.buildingWallStyle,
+        wallThickness: s.wallThickness,
+        castShadows: true,
+      });
+    } else if (activeTool === 'wall' && draftPoints.length >= 2) {
+      store.addWall({
+        id: uid('w'),
+        points: draftPoints,
+        closed: false,
+        style: s.wallStyle,
+        thickness: s.wallThickness,
+        castShadows: s.wallCastShadows,
+      });
+    } else if (activeTool === 'path' && draftPoints.length >= 2) {
+      store.addPath({
+        id: uid('path'),
+        points: draftPoints,
+        style: s.pathStyle,
+        width: s.pathWidth,
+        smooth: s.pathSmooth,
+        fadeEnds: true,
+      });
+    } else if (activeTool === 'roof' && draftPoints.length >= 3) {
+      store.addRoof({
+        id: uid('roof'),
+        points: draftPoints,
+        style: s.roofStyle,
+        ridgeAngle: 0,
+        opacity: s.roofOpacity,
+      });
+    }
+    setDraftPoints([]);
+  }, [activeTool, draftPoints]);
+
+  // Hit-testing for Select tool
+  const hitTest = useCallback(
+    (pt: Point): SelectionRef | null => {
+      // 1. Lights
+      for (let i = activeLevel.lights.length - 1; i >= 0; i--) {
+        const l = activeLevel.lights[i];
+        if (Math.hypot(pt.x - l.x, pt.y - l.y) <= 0.45) {
+          return { kind: 'light', id: l.id };
+        }
+      }
+      // 2. Portals
+      for (let i = activeLevel.portals.length - 1; i >= 0; i--) {
+        const p = activeLevel.portals[i];
+        if (Math.hypot(pt.x - p.x, pt.y - p.y) <= Math.max(0.5, p.width * 0.5)) {
+          return { kind: 'portal', id: p.id };
+        }
+      }
+      // 3. Objects (top-most first)
+      for (let i = activeLevel.objects.length - 1; i >= 0; i--) {
+        const o = activeLevel.objects[i];
+        const def = getPropDefinition(o.propId, doc.customAssets);
+        const rx = ((def?.widthTiles ?? 1) * Math.abs(o.scaleX)) / 2;
+        const ry = ((def?.heightTiles ?? 1) * Math.abs(o.scaleY)) / 2;
+        const dx = pt.x - o.x;
+        const dy = pt.y - o.y;
+        const cos = Math.cos(-o.rotation);
+        const sin = Math.sin(-o.rotation);
+        const lx = dx * cos - dy * sin;
+        const ly = dx * sin + dy * cos;
+        if (Math.abs(lx) <= rx && Math.abs(ly) <= ry) {
+          return { kind: 'object', id: o.id };
+        }
+      }
+      // 4. Roofs
+      for (let i = activeLevel.roofs.length - 1; i >= 0; i--) {
+        if (pointInPolygon(pt, activeLevel.roofs[i].points)) {
+          return { kind: 'roof', id: activeLevel.roofs[i].id };
+        }
+      }
+      // 5. Walls
+      for (let i = activeLevel.walls.length - 1; i >= 0; i--) {
+        const w = activeLevel.walls[i];
+        for (let k = 0; k < w.points.length - 1; k++) {
+          if (distToSegment(pt, w.points[k], w.points[k + 1]).dist <= 0.35) {
+            return { kind: 'wall', id: w.id };
+          }
+        }
+      }
+      // 6. Paths
+      for (let i = activeLevel.paths.length - 1; i >= 0; i--) {
+        const p = activeLevel.paths[i];
+        for (let k = 0; k < p.points.length - 1; k++) {
+          if (distToSegment(pt, p.points[k], p.points[k + 1]).dist <= p.width * 0.55) {
+            return { kind: 'path', id: p.id };
+          }
+        }
+      }
+      // 7. Rooms
+      for (let i = activeLevel.rooms.length - 1; i >= 0; i--) {
+        if (pointInPolygon(pt, activeLevel.rooms[i].points)) {
+          return { kind: 'room', id: activeLevel.rooms[i].id };
+        }
+      }
+      return null;
+    },
+    [activeLevel, doc.customAssets]
+  );
+
+  // Main render loop
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = container.getBoundingClientRect();
+    const cw = Math.max(1, Math.floor(rect.width));
+    const ch = Math.max(1, Math.floor(rect.height));
+
+    if (canvas.width !== Math.floor(cw * dpr) || canvas.height !== Math.floor(ch * dpr)) {
+      canvas.width = Math.floor(cw * dpr);
+      canvas.height = Math.floor(ch * dpr);
+    }
+
+    const ctx = canvas.getContext('2d')!;
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    // Viewport dark canvas backdrop
+    ctx.fillStyle = '#0f1115';
+    ctx.fillRect(0, 0, cw, ch);
+
+    const ppg = doc.pixelsPerGrid * zoom;
+    const mapW = doc.width * ppg;
+    const mapH = doc.height * ppg;
+
+    ctx.save();
+    ctx.translate(panX, panY);
+
+    // Subtle map frame shadow
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.65)';
+    ctx.shadowBlur = 32;
+    ctx.fillStyle = '#181a20';
+    ctx.fillRect(0, 0, mapW, mapH);
+    ctx.restore();
+
+    // Build live brush preview stroke so painting renders with real texture/water immediately
+    const previewTerrainStroke =
+      dragRef.current.mode === 'terrain' && dragRef.current.strokePoints.length > 0
+        ? {
+            id: '__preview_terrain__',
+            material: toolSettings.terrainMaterial,
+            points: dragRef.current.strokePoints,
+            radius: toolSettings.terrainRadius,
+            opacity: toolSettings.terrainOpacity,
+            softness: toolSettings.terrainSoftness,
+          }
+        : null;
+
+    const previewWaterStroke =
+      dragRef.current.mode === 'water' && dragRef.current.strokePoints.length > 0
+        ? {
+            id: '__preview_water__',
+            points: dragRef.current.strokePoints,
+            radius: toolSettings.waterRadius,
+            deepColor: toolSettings.waterDeepColor,
+            shallowColor: toolSettings.waterShallowColor,
+            erase: toolSettings.waterErase,
+          }
+        : null;
+
+    // Render full map
+    renderMapScene(ctx, doc, {
+      ppg,
+      showGrid: doc.layers.grid,
+      showLighting: doc.layers.lighting,
+      selection,
+      showLightHandles: activeTool === 'light' || activeTool === 'select',
+      previewTerrainStroke,
+      previewWaterStroke,
+      onAssetLoaded: () => setRenderTick((t) => t + 1),
+    });
+
+    // Map border outline
+    ctx.strokeStyle = '#3d4454';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(0, 0, mapW, mapH);
+
+    // Interactive tool previews
+    if (hoverTile) {
+      const snapped = snapPoint(hoverTile, doc.grid.snap, doc.grid.snapSubdivision);
+
+      if (activeTool === 'terrain' || activeTool === 'water') {
+        const r =
+          (activeTool === 'terrain' ? toolSettings.terrainRadius : toolSettings.waterRadius) *
+          ppg;
+        ctx.save();
+        ctx.strokeStyle =
+          activeTool === 'water'
+            ? toolSettings.waterErase
+              ? '#f0706c'
+              : '#4dc8db'
+            : '#f0a848';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(hoverTile.x * ppg, hoverTile.y * ppg, r, 0, Math.PI * 2);
+        ctx.stroke();
+        // Inner softness ring for terrain brush
+        if (activeTool === 'terrain' && toolSettings.terrainSoftness > 0.05) {
+          ctx.setLineDash([4, 4]);
+          ctx.globalAlpha = 0.5;
+          ctx.beginPath();
+          ctx.arc(
+            hoverTile.x * ppg,
+            hoverTile.y * ppg,
+            r * Math.max(0.05, 1 - toolSettings.terrainSoftness * 0.85),
+            0,
+            Math.PI * 2
+          );
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      if (activeTool === 'building' && toolSettings.buildingMode === 'rect' && rectStart) {
+        const x0 = Math.min(rectStart.x, snapped.x) * ppg;
+        const y0 = Math.min(rectStart.y, snapped.y) * ppg;
+        const w = Math.abs(snapped.x - rectStart.x) * ppg;
+        const h = Math.abs(snapped.y - rectStart.y) * ppg;
+        ctx.fillStyle = 'rgba(217, 140, 54, 0.18)';
+        ctx.strokeStyle = '#f0a848';
+        ctx.lineWidth = 2;
+        ctx.fillRect(x0, y0, w, h);
+        ctx.strokeRect(x0, y0, w, h);
+      }
+
+      if (draftPoints.length > 0) {
+        ctx.save();
+        ctx.strokeStyle = '#f0a848';
+        ctx.fillStyle = 'rgba(217, 140, 54, 0.16)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        draftPoints.forEach((p, idx) => {
+          if (idx === 0) ctx.moveTo(p.x * ppg, p.y * ppg);
+          else ctx.lineTo(p.x * ppg, p.y * ppg);
+        });
+        ctx.lineTo(snapped.x * ppg, snapped.y * ppg);
+        if (activeTool === 'building' || activeTool === 'roof') {
+          ctx.fill();
+        }
+        ctx.stroke();
+        for (const p of draftPoints) {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(p.x * ppg, p.y * ppg, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      if (activeTool === 'object') {
+        const def = getPropDefinition(toolSettings.propId, doc.customAssets);
+        if (def) {
+          const pw = def.widthTiles * ppg * toolSettings.propScale;
+          const ph = def.heightTiles * ppg * toolSettings.propScale;
+          ctx.save();
+          ctx.globalAlpha = 0.72;
+          ctx.translate(snapped.x * ppg, snapped.y * ppg);
+          ctx.rotate((toolSettings.propRotationDeg * Math.PI) / 180);
+          const sprite = getPropSprite(toolSettings.propId);
+          if (sprite) {
+            ctx.drawImage(sprite, -pw / 2, -ph / 2, pw, ph);
+          } else {
+            ctx.strokeStyle = '#f0a848';
+            ctx.strokeRect(-pw / 2, -ph / 2, pw, ph);
+          }
+          ctx.restore();
+        }
+      }
+
+      if (activeTool === 'portal') {
+        const near = findNearestWallPoint(hoverTile, activeLevel);
+        const pos = near ? near.pt : snapped;
+        const ang = near ? near.angle : 0;
+        ctx.save();
+        ctx.translate(pos.x * ppg, pos.y * ppg);
+        ctx.rotate(ang);
+        ctx.strokeStyle = '#4de3e8';
+        ctx.fillStyle = 'rgba(77, 227, 232, 0.32)';
+        ctx.lineWidth = 2;
+        const w = toolSettings.portalWidth * ppg;
+        ctx.fillRect(-w / 2, -ppg * 0.16, w, ppg * 0.32);
+        ctx.strokeRect(-w / 2, -ppg * 0.16, w, ppg * 0.32);
+        ctx.restore();
+      }
+
+      if (activeTool === 'light') {
+        ctx.save();
+        ctx.strokeStyle = toolSettings.lightColor;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.arc(
+          snapped.x * ppg,
+          snapped.y * ppg,
+          toolSettings.lightRadius * ppg,
+          0,
+          Math.PI * 2
+        );
+        ctx.stroke();
+        ctx.fillStyle = toolSettings.lightColor;
+        ctx.beginPath();
+        ctx.arc(snapped.x * ppg, snapped.y * ppg, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    ctx.restore();
+    ctx.restore();
+  }, [
+    doc,
+    activeLevel,
+    activeTool,
+    toolSettings,
+    selection,
+    zoom,
+    panX,
+    panY,
+    hoverTile,
+    draftPoints,
+    rectStart,
+    renderTick,
+  ]);
+
+  // Resize observer
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(() => setRenderTick((t) => t + 1));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const rawTile = screenToTile(e.clientX, e.clientY);
+    const snapped = snapPoint(rawTile, doc.grid.snap, doc.grid.snapSubdivision);
+
+    // Middle button or Space+Left or Right-drag pans
+    if (e.button === 1 || (e.button === 0 && spaceDown) || e.button === 2) {
+      setIsPanning(true);
+      dragRef.current = {
+        mode: 'pan',
+        startScreenX: e.clientX,
+        startScreenY: e.clientY,
+        startPanX: panX,
+        startPanY: panY,
+        lastTile: rawTile,
+        strokePoints: [],
+        moved: false,
+      };
+      return;
+    }
+
+    if (e.button !== 0) return;
+
+    const store = useMapStore.getState();
+
+    if (activeTool === 'select') {
+      const hit = hitTest(rawTile);
+      setSelection(hit);
+      if (hit) {
+        dragRef.current = {
+          mode: 'move_sel',
+          startScreenX: e.clientX,
+          startScreenY: e.clientY,
+          startPanX: panX,
+          startPanY: panY,
+          lastTile: snapped,
+          strokePoints: [],
+          moved: false,
+        };
+      }
+      return;
+    }
+
+    if (activeTool === 'terrain') {
+      dragRef.current = {
+        mode: 'terrain',
+        startScreenX: e.clientX,
+        startScreenY: e.clientY,
+        startPanX: panX,
+        startPanY: panY,
+        lastTile: rawTile,
+        strokePoints: [rawTile],
+        moved: false,
+      };
+      setRenderTick((t) => t + 1);
+      return;
+    }
+
+    if (activeTool === 'water') {
+      dragRef.current = {
+        mode: 'water',
+        startScreenX: e.clientX,
+        startScreenY: e.clientY,
+        startPanX: panX,
+        startPanY: panY,
+        lastTile: rawTile,
+        strokePoints: [rawTile],
+        moved: false,
+      };
+      setRenderTick((t) => t + 1);
+      return;
+    }
+
+    if (activeTool === 'building') {
+      if (toolSettings.buildingMode === 'rect') {
+        setRectStart(snapped);
+      } else {
+        setDraftPoints((prev) => [...prev, snapped]);
+      }
+      return;
+    }
+
+    if (activeTool === 'wall' || activeTool === 'path' || activeTool === 'roof') {
+      setDraftPoints((prev) => [...prev, snapped]);
+      return;
+    }
+
+    if (activeTool === 'portal') {
+      const near = findNearestWallPoint(rawTile, activeLevel);
+      const pos = near ? near.pt : snapped;
+      const angle = near ? near.angle : 0;
+      const blocksLight =
+        toolSettings.portalKind === 'door_wood' ||
+        toolSettings.portalKind === 'door_double' ||
+        toolSettings.portalKind === 'door_iron';
+      store.addPortal({
+        id: uid('p'),
+        x: pos.x,
+        y: pos.y,
+        angle,
+        width: toolSettings.portalWidth,
+        kind: toolSettings.portalKind,
+        open: toolSettings.portalOpen,
+        blocksLight: blocksLight && !toolSettings.portalOpen,
+      });
+      return;
+    }
+
+    if (activeTool === 'object') {
+      const placeOne = (pt: Point, randomJitter: boolean) => {
+        const rot = randomJitter
+          ? Math.random() * Math.PI * 2
+          : (toolSettings.propRotationDeg * Math.PI) / 180;
+        const scale = randomJitter
+          ? toolSettings.propScale * (0.8 + Math.random() * 0.4)
+          : toolSettings.propScale;
+        store.addObject({
+          id: uid('obj'),
+          propId: toolSettings.propId,
+          x: pt.x,
+          y: pt.y,
+          scaleX: scale,
+          scaleY: scale,
+          rotation: rot,
+          opacity: 1,
+          layer: toolSettings.propLayer,
+          castShadow: toolSettings.propShadow,
+          shadowOffset: 1,
+        });
+      };
+
+      placeOne(snapped, toolSettings.propScatter);
+      if (toolSettings.propScatter) {
+        dragRef.current = {
+          mode: 'scatter',
+          startScreenX: e.clientX,
+          startScreenY: e.clientY,
+          startPanX: panX,
+          startPanY: panY,
+          lastTile: rawTile,
+          strokePoints: [],
+          moved: false,
+        };
+      }
+      return;
+    }
+
+    if (activeTool === 'light') {
+      const light = {
+        id: uid('l'),
+        x: snapped.x,
+        y: snapped.y,
+        color: toolSettings.lightColor,
+        radius: toolSettings.lightRadius,
+        intensity: toolSettings.lightIntensity,
+        castShadows: toolSettings.lightShadows,
+      };
+      store.addLight(light);
+      setSelection({ kind: 'light', id: light.id });
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const rawTile = screenToTile(e.clientX, e.clientY);
+    setHoverTile(rawTile);
+    setCursorTile({
+      x: Math.round(rawTile.x * 10) / 10,
+      y: Math.round(rawTile.y * 10) / 10,
+    });
+
+    const drag = dragRef.current;
+    if (drag.mode === 'pan') {
+      const dx = e.clientX - drag.startScreenX;
+      const dy = e.clientY - drag.startScreenY;
+      setViewport(zoom, drag.startPanX + dx, drag.startPanY + dy);
+      return;
+    }
+
+    if (drag.mode === 'move_sel') {
+      const snapped = snapPoint(rawTile, doc.grid.snap, doc.grid.snapSubdivision);
+      const dx = snapped.x - drag.lastTile.x;
+      const dy = snapped.y - drag.lastTile.y;
+      if (Math.abs(dx) > 1e-4 || Math.abs(dy) > 1e-4) {
+        useMapStore.getState().moveSelectedBy(dx, dy, false);
+        drag.lastTile = snapped;
+        drag.moved = true;
+      }
+      return;
+    }
+
+    if (drag.mode === 'terrain' || drag.mode === 'water') {
+      const last = drag.strokePoints[drag.strokePoints.length - 1];
+      if (!last || Math.hypot(rawTile.x - last.x, rawTile.y - last.y) > 0.25) {
+        drag.strokePoints.push(rawTile);
+        setRenderTick((t) => t + 1);
+      }
+      return;
+    }
+
+    if (drag.mode === 'scatter') {
+      const dist = Math.hypot(rawTile.x - drag.lastTile.x, rawTile.y - drag.lastTile.y);
+      if (dist >= 1.35 * toolSettings.propScale) {
+        drag.lastTile = rawTile;
+        const scale = toolSettings.propScale * (0.8 + Math.random() * 0.4);
+        useMapStore.getState().addObject({
+          id: uid('obj'),
+          propId: toolSettings.propId,
+          x: rawTile.x + (Math.random() - 0.5) * 0.4,
+          y: rawTile.y + (Math.random() - 0.5) * 0.4,
+          scaleX: scale,
+          scaleY: scale,
+          rotation: Math.random() * Math.PI * 2,
+          opacity: 1,
+          layer: toolSettings.propLayer,
+          castShadow: toolSettings.propShadow,
+          shadowOffset: 1,
+        });
+      }
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const rawTile = screenToTile(e.clientX, e.clientY);
+    const snapped = snapPoint(rawTile, doc.grid.snap, doc.grid.snapSubdivision);
+    const drag = dragRef.current;
+
+    if (drag.mode === 'pan') {
+      setIsPanning(false);
+    } else if (drag.mode === 'terrain' && drag.strokePoints.length > 0) {
+      useMapStore.getState().addTerrainStroke({
+        id: uid('ts'),
+        material: toolSettings.terrainMaterial,
+        points: drag.strokePoints,
+        radius: toolSettings.terrainRadius,
+        opacity: toolSettings.terrainOpacity,
+        softness: toolSettings.terrainSoftness,
+      });
+    } else if (drag.mode === 'water' && drag.strokePoints.length > 0) {
+      useMapStore.getState().addWaterStroke({
+        id: uid('ws'),
+        points: drag.strokePoints,
+        radius: toolSettings.waterRadius,
+        deepColor: toolSettings.waterDeepColor,
+        shallowColor: toolSettings.waterShallowColor,
+        erase: toolSettings.waterErase,
+      });
+    }
+
+    if (activeTool === 'building' && toolSettings.buildingMode === 'rect' && rectStart) {
+      const x0 = Math.min(rectStart.x, snapped.x);
+      const y0 = Math.min(rectStart.y, snapped.y);
+      const x1 = Math.max(rectStart.x, snapped.x);
+      const y1 = Math.max(rectStart.y, snapped.y);
+      if (x1 - x0 >= 0.4 && y1 - y0 >= 0.4) {
+        useMapStore.getState().addRoom({
+          id: uid('room'),
+          points: [
+            { x: x0, y: y0 },
+            { x: x1, y: y0 },
+            { x: x1, y: y1 },
+            { x: x0, y: y1 },
+          ],
+          floor: toolSettings.floorPattern,
+          wallStyle: toolSettings.buildingWallStyle,
+          wallThickness: toolSettings.wallThickness,
+          castShadows: true,
+        });
+      }
+      setRectStart(null);
+    }
+
+    dragRef.current.mode = 'none';
+    dragRef.current.strokePoints = [];
+  };
+
+  const handleDoubleClick = () => {
+    if (draftPoints.length >= 2) {
+      commitDraftPolyline();
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    // Shift + wheel rotates active prop
+    if (e.shiftKey && activeTool === 'object') {
+      const step = e.deltaY > 0 ? 15 : -15;
+      updateToolSettings({
+        propRotationDeg: (toolSettings.propRotationDeg + step + 360) % 360,
+      });
+      return;
+    }
+
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    const factor = e.deltaY < 0 ? 1.12 : 0.89;
+    const nextZoom = Math.max(0.2, Math.min(3.5, zoom * factor));
+    const ratio = nextZoom / zoom;
+    const nextPanX = mx - (mx - panX) * ratio;
+    const nextPanY = my - (my - panY) * ratio;
+    setViewport(nextZoom, nextPanX, nextPanY);
+  };
+
+  const toolHint = (() => {
+    switch (activeTool) {
+      case 'select':
+        return 'Clic para seleccionar · Arrastra para mover · Ctrl+D duplicar · Supr borrar · Clic derecho/Espacio para mover vista';
+      case 'terrain':
+        return 'Arrastra para pintar terreno suavizado sobre el mapa';
+      case 'water':
+        return 'Arrastra para pintar agua con orilla automática';
+      case 'building':
+        return toolSettings.buildingMode === 'rect'
+          ? 'Arrastra para crear una habitación con suelo y muros'
+          : 'Clic para añadir vértices · Doble clic o Enter para cerrar la habitación';
+      case 'wall':
+        return 'Clic para trazar segmentos de muro · Doble clic o Enter para terminar';
+      case 'portal':
+        return 'Acércate a un muro y haz clic para encajar puerta o ventana automáticamente';
+      case 'path':
+        return 'Clic para trazar un camino · Doble clic o Enter para finalizar';
+      case 'object':
+        return 'Clic para colocar objeto · Shift + Rueda para rotar · Activa Dispersión para pintar bosques';
+      case 'light':
+        return 'Clic para colocar una fuente de luz dinámica con sombras en tiempo real';
+      case 'roof':
+        return 'Clic para marcar vértices del tejado · Doble clic o Enter para cerrar';
+    }
+  })();
+
+  return (
+    <div
+      ref={containerRef}
+      className="canvas-stage"
+      style={{ cursor: isPanning || spaceDown ? 'grabbing' : activeTool === 'select' ? 'default' : 'crosshair' }}
+    >
+      <canvas
+        ref={canvasRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onDoubleClick={handleDoubleClick}
+        onWheel={handleWheel}
+        onContextMenu={(e) => e.preventDefault()}
+      />
+      <div className="canvas-hint-pill">{toolHint}</div>
+    </div>
+  );
+}
