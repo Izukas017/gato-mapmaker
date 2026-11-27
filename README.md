@@ -10,8 +10,6 @@ Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) ins
 
 ## Capturas de pantalla
 
-> Las capturas son de una versión anterior: las texturas actuales son distintas.
-
 ### Santuario del Patio (Templo e iluminación con sombras)
 ![Editor Gato MapMaker con el mapa Santuario del Patio](docs/images/sanctuary-editor.png)
 
