@@ -777,6 +777,69 @@ export function getTexturePattern(
   return pat ?? null;
 }
 
+let roadCanvas: HTMLCanvasElement | null = null;
+const roadPatterns = new WeakMap<CanvasRenderingContext2D, CanvasPattern>();
+
+// Seamless packed earth with soil patches, grain and half-buried pebbles.
+function generateRoadTexture(): HTMLCanvasElement {
+  const size = 256;
+  const [canvas, ctx] = makeCanvas(size, size);
+  const rand = mulberry32(4271);
+  const patches = tileNoise(rand, size, 5);
+  const clumps = tileNoise(rand, size, 20);
+  const grain = tileNoise(rand, size, 112);
+  const image = ctx.createImageData(size, size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const mix = patches(x, y);
+      const shade = (clumps(x, y) - 0.5) * 30 + (grain(x, y) - 0.5) * 34;
+      const o = (y * size + x) * 4;
+      image.data[o] = 128 + mix * 34 + shade;
+      image.data[o + 1] = 101 + mix * 29 + shade * 0.9;
+      image.data[o + 2] = 67 + mix * 22 + shade * 0.7;
+      image.data[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+
+  for (let i = 0; i < 150; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const r = 1.2 + rand() * rand() * 5;
+    const tilt = rand() * Math.PI;
+    const tone = 112 + Math.floor(rand() * 55);
+    // Repeat at the borders so pebbles cross the tile edge without being cut.
+    for (let dx = -size; dx <= size; dx += size) {
+      for (let dy = -size; dy <= size; dy += size) {
+        const pebble = (ox: number, oy: number, grow: number, color: string) => {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.ellipse(x + dx + ox, y + dy + oy, r * grow, r * 0.75 * grow, tilt, 0, Math.PI * 2);
+          ctx.fill();
+        };
+        pebble(1, 1.4, 1.1, 'rgba(45, 30, 15, 0.4)');
+        pebble(0, 0, 1, `rgb(${tone + 12},${tone},${tone - 22})`);
+        pebble(-r * 0.25, -r * 0.25, 0.45, 'rgba(255, 240, 210, 0.28)');
+      }
+    }
+  }
+  return canvas;
+}
+
+export function getRoadPattern(
+  ctx: CanvasRenderingContext2D,
+  scale: number
+): CanvasPattern | null {
+  let pattern = roadPatterns.get(ctx) ?? null;
+  if (!pattern) {
+    roadCanvas ??= generateRoadTexture();
+    pattern = ctx.createPattern(roadCanvas, 'repeat');
+    if (pattern) roadPatterns.set(ctx, pattern);
+  }
+  pattern?.setTransform(new DOMMatrix().scale(scale, scale));
+  return pattern;
+}
+
 export function getTextureThumbnail(
   kind: 'terrain' | 'floor' | 'roof',
   id: string

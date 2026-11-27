@@ -21,7 +21,8 @@ import {
   samplePath,
 } from '../engine/paths';
 import { boxSelect, visibleContent } from '../engine/selection';
-import { renderMapScene, traceBrushShape } from '../engine/renderer';
+import { useSceneFrame } from './useSceneFrame';
+import { drawEditorOverlay, traceBrushShape } from '../engine/renderer';
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
 import type { MapDocument, MapLevel, Point, SelectionRef } from '../types/map';
@@ -116,6 +117,8 @@ export function MapCanvas() {
   const [spaceDown, setSpaceDown] = useState(false);
   const [handPanMode, setHandPanMode] = useState(false);
   const [renderTick, setRenderTick] = useState(0);
+  const assetTickRef = useRef(0);
+  const drawScene = useSceneFrame(() => setRenderTick((t) => t + 1));
 
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{
@@ -449,13 +452,15 @@ export function MapCanvas() {
     [activeLevel, doc.customAssets, doc.layers]
   );
 
-  // Main render loop
+  // Main render loop: at most one paint per display frame, however many events arrive.
   useEffect(() => {
+    const paint = () => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    const dpr = window.devicePixelRatio || 1;
+    // Beyond 1.5x the extra pixels are hard to see and expensive on weak hardware.
+    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
     const rect = container.getBoundingClientRect();
     const cw = Math.max(1, Math.floor(rect.width));
     const ch = Math.max(1, Math.floor(rect.height));
@@ -482,8 +487,8 @@ export function MapCanvas() {
 
     // Subtle map frame shadow
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.65)';
-    ctx.shadowBlur = 32;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(-6, -6, mapW + 12, mapH + 12);
     ctx.fillStyle = '#181a20';
     ctx.fillRect(0, 0, mapW, mapH);
     ctx.restore();
@@ -520,19 +525,34 @@ export function MapCanvas() {
           }
         : null;
 
-    // Render full map
-    renderMapScene(ctx, doc, {
+    // Cached map first, then everything that follows the cursor on top of it
+    ctx.save();
+    ctx.translate(-panX, -panY);
+    const stroke = previewTerrainStroke ?? previewWaterStroke;
+    drawScene(
+      ctx,
+      doc,
+      { width: cw, height: ch, dpr, ppg, panX, panY },
+      `${assetTickRef.current}:${stroke ? `${stroke.id}${stroke.points.length}` : ''}`,
+      {
+        showGrid: doc.layers.grid,
+        showLighting: doc.layers.lighting,
+        previewTerrainStroke,
+        previewWaterStroke,
+        onAssetLoaded: () => {
+          assetTickRef.current += 1;
+          setRenderTick((t) => t + 1);
+        },
+      }
+    );
+    ctx.restore();
+    drawEditorOverlay(ctx, doc, {
       ppg,
-      showGrid: doc.layers.grid,
-      showLighting: doc.layers.lighting,
       selection,
       selectedItems,
       showLightHandles:
         activeTool === 'light' ||
         (doc.layers.lighting && (alwaysShowLightHandles || activeTool === 'select')),
-      previewTerrainStroke,
-      previewWaterStroke,
-      onAssetLoaded: () => setRenderTick((t) => t + 1),
     });
 
     // Map border outline
@@ -712,6 +732,9 @@ export function MapCanvas() {
 
     ctx.restore();
     ctx.restore();
+    };
+    const frame = requestAnimationFrame(paint);
+    return () => cancelAnimationFrame(frame);
   }, [
     doc,
     activeLevel,

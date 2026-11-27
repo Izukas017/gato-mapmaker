@@ -30,7 +30,7 @@ import {
   getPropDefinition,
   getPropSprite,
 } from './props';
-import { getTexturePattern, getWallColors } from './textures';
+import { getRoadPattern, getTexturePattern, getWallColors } from './textures';
 
 export interface RenderOptions {
   ppg: number; // pixels per grid tile
@@ -42,7 +42,12 @@ export interface RenderOptions {
   previewTerrainStroke?: TerrainStroke | null;
   previewWaterStroke?: WaterStroke | null;
   onAssetLoaded?: () => void;
+  overlay?: boolean; // false = leave out selection and light handles (drawn separately)
+  maxLayerSize?: number; // cap in px for soft offscreen layers; unset = full resolution (export)
 }
+
+// Terrain/water bitmap size in the editor; the lightmap, being blurry, uses half of it.
+export const EDITOR_LAYER_LIMIT = 2048;
 
 // Reusable offscreen canvases for lighting, terrain feathering & water compositing
 let lightCanvas: HTMLCanvasElement | null = null;
@@ -206,30 +211,30 @@ function drawTerrainStrokeFeathered(
   const innerFrac = Math.max(0.1, 1 - stroke.softness * 0.72);
   const step = Math.max(2, r * 0.25);
 
-  const stampDab = (wx: number, wy: number) => {
-    const lx = wx - bx;
-    const ly = wy - by;
-    if (shape === 'circle') {
-      const grad = mctx.createRadialGradient(lx, ly, r * innerFrac, lx, ly, r);
-      grad.addColorStop(0, 'rgba(255,255,255,1)');
-      grad.addColorStop(1, 'rgba(255,255,255,0)');
-      mctx.fillStyle = grad;
-      mctx.beginPath();
-      mctx.arc(lx, ly, r, 0, Math.PI * 2);
-      mctx.fill();
+  const dab = document.createElement('canvas');
+  dab.width = dab.height = pad * 2;
+  const dctx = dab.getContext('2d')!;
+  if (shape === 'circle') {
+    const grad = dctx.createRadialGradient(pad, pad, r * innerFrac, pad, pad, r);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    dctx.fillStyle = grad;
+    dctx.beginPath();
+    dctx.arc(pad, pad, r, 0, Math.PI * 2);
+    dctx.fill();
+  } else {
+    dctx.fillStyle = '#ffffff';
+    if (stroke.softness > 0.05) {
+      dctx.shadowColor = '#ffffff';
+      dctx.shadowBlur = r * stroke.softness * 0.55;
+      traceBrushShape(dctx, pad, pad, r * innerFrac, shape, angleDeg, rectRatio);
     } else {
-      mctx.save();
-      mctx.fillStyle = '#ffffff';
-      if (stroke.softness > 0.05) {
-        mctx.shadowColor = '#ffffff';
-        mctx.shadowBlur = r * stroke.softness * 0.55;
-        traceBrushShape(mctx, lx, ly, r * innerFrac, shape, angleDeg, rectRatio);
-      } else {
-        traceBrushShape(mctx, lx, ly, r, shape, angleDeg, rectRatio);
-      }
-      mctx.fill();
-      mctx.restore();
+      traceBrushShape(dctx, pad, pad, r, shape, angleDeg, rectRatio);
     }
+    dctx.fill();
+  }
+  const stampDab = (wx: number, wy: number) => {
+    mctx.drawImage(dab, wx - bx - pad, wy - by - pad);
   };
 
   mctx.globalCompositeOperation = 'source-over';
@@ -505,8 +510,39 @@ function pathLayers(
   };
 
   if (path.style === 'dirt_road') {
-    paint('rgba(138, 118, 86, 0.5)', w * 1.25);
-    paint('#9e8863', w);
+    const earth = getRoadPattern(ctx, ppg / 128) ?? '#96794f';
+    paint('rgba(74, 56, 32, 0.22)', w * 1.34);
+    paint('rgba(84, 64, 38, 0.4)', w * 1.16);
+    // Ragged edges: small lobes of earth spilling over both sides.
+    const lobes = spacedAlong(line, Math.max(0.07, path.width * 0.09));
+    layers.push(() => {
+      ctx.save();
+      ctx.fillStyle = earth;
+      ctx.beginPath();
+      lobes.forEach(({ at, normal }, i) => {
+        for (const side of [-1, 1]) {
+          // Repeatable pseudo-random value, so edges stay put between redraws.
+          const seed = Math.sin((i + 1) * 12.9898 + side * 4.1) * 43758.5453;
+          const noise = seed - Math.floor(seed);
+          const out = side * path.width * (0.445 + noise * 0.06);
+          const x = (at.x + normal.x * out) * ppg;
+          const y = (at.y + normal.y * out) * ppg;
+          const radius = w * (0.03 + noise * noise * 0.075);
+          ctx.moveTo(x + radius, y);
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+        }
+      });
+      ctx.fill();
+      ctx.restore();
+    });
+    paint(earth, w);
+    // Trodden middle and two wheel ruts
+    paint('rgba(226, 196, 140, 0.13)', w * 0.62);
+    for (const side of [-1, 1]) {
+      const rut = offsetLine(line, side * path.width * 0.22);
+      paint('rgba(66, 46, 24, 0.2)', w * 0.15, [], rut);
+      paint('rgba(60, 40, 20, 0.24)', w * 0.06, [], rut);
+    }
   } else if (path.style === 'cobble_path') {
     const pat = getTexturePattern(ctx, 'terrain', 'cobblestone', ppg / 140);
     paint('rgba(30,28,25,0.55)', w + 4);
@@ -865,6 +901,7 @@ function drawObjectsLayer(
   customAssets: CustomAsset[],
   onAssetLoaded?: () => void
 ) {
+  const toScreen = ctx.getTransform();
   for (const obj of objects) {
     if (obj.layer !== layer) continue;
     const def = getPropDefinition(obj.propId, customAssets);
@@ -872,6 +909,18 @@ function drawObjectsLayer(
 
     const w = def.widthTiles * ppg * Math.abs(obj.scaleX);
     const h = def.heightTiles * ppg * Math.abs(obj.scaleY);
+
+    // Off-screen objects cost nothing (shadows reach about half a tile further).
+    const centre = toScreen.transformPoint({ x: obj.x * ppg, y: obj.y * ppg });
+    const reach = (Math.hypot(w, h) / 2 + ppg * 0.5) * Math.hypot(toScreen.a, toScreen.b);
+    if (
+      centre.x < -reach ||
+      centre.y < -reach ||
+      centre.x > ctx.canvas.width + reach ||
+      centre.y > ctx.canvas.height + reach
+    ) {
+      continue;
+    }
 
     ctx.save();
     ctx.translate(obj.x * ppg, obj.y * ppg);
@@ -1004,7 +1053,8 @@ function drawLighting(
   ctx: CanvasRenderingContext2D,
   doc: MapDocument,
   level: MapLevel,
-  ppg: number
+  ppg: number,
+  maxSize?: number
 ) {
   const objectLights = level.objects
     .filter((o) => o.light?.enabled)
@@ -1023,8 +1073,14 @@ function drawLighting(
 
   const mapW = Math.max(1, Math.round(doc.width * ppg));
   const mapH = Math.max(1, Math.round(doc.height * ppg));
-  lightCanvas = getOffscreen(lightCanvas, mapW, mapH);
+  const scale = maxSize ? Math.min(1, maxSize / Math.max(mapW, mapH)) : 1;
+  lightCanvas = getOffscreen(
+    lightCanvas,
+    Math.max(1, Math.round(mapW * scale)),
+    Math.max(1, Math.round(mapH * scale))
+  );
   const lctx = lightCanvas.getContext('2d')!;
+  lctx.setTransform(lightCanvas.width / mapW, 0, 0, lightCanvas.height / mapH, 0, 0);
 
   const ambRgb = hexToRgb(doc.ambient.color);
   // Ambient brightness: intensity 1 = bright daylight, 0 = dark night
@@ -1080,7 +1136,7 @@ function drawLighting(
   // Multiply lightmap over the scene for rich shadows & warm pools of light
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
-  ctx.drawImage(lightCanvas, 0, 0);
+  ctx.drawImage(lightCanvas, 0, 0, mapW, mapH);
 
   // Soft warm bloom pass on top for glowing torches/braziers (clipped to walls when strictWalls is on)
   ctx.globalCompositeOperation = 'screen';
@@ -1297,23 +1353,23 @@ export function renderMapScene(
   ctx.rect(0, 0, mapW, mapH);
   ctx.clip();
 
-  // 1 & 2. Cached Terrain + Water layer (blits in <1ms when not actively painting)
-  const cacheW = Math.max(1, Math.round(mapW));
-  const cacheH = Math.max(1, Math.round(mapH));
-  const hasLiveWaterPreview = Boolean(options.previewWaterStroke);
+  // 1 & 2. Cached Terrain + Water layer (blits in <1ms when not actively painting).
+  // With a size cap the bitmap stops growing with the zoom, so it is rebuilt far less often.
+  const limit = options.maxLayerSize;
+  const layerPpg = limit ? Math.min(ppg, limit / Math.max(doc.width, doc.height)) : ppg;
+  const cacheW = Math.max(1, Math.round(doc.width * layerPpg));
+  const cacheH = Math.max(1, Math.round(doc.height * layerPpg));
+  const waterPreview = options.previewWaterStroke ?? null;
 
-  if (
-    !hasLiveWaterPreview &&
-    cacheW <= 4096 &&
-    cacheH <= 4096
-  ) {
+  if (limit || (!waterPreview && cacheW <= 4096 && cacheH <= 4096)) {
     const cacheValid =
+      !waterPreview &&
       terrainCacheCanvas &&
       terrainCacheState &&
       terrainCacheState.levelId === level.id &&
       terrainCacheState.width === doc.width &&
       terrainCacheState.height === doc.height &&
-      Math.abs(terrainCacheState.ppg - ppg) < 0.001 &&
+      Math.abs(terrainCacheState.ppg - layerPpg) < 0.001 &&
       terrainCacheState.terrainBase === level.terrainBase &&
       terrainCacheState.terrainStrokes === level.terrainStrokes &&
       terrainCacheState.waterStrokes === level.waterStrokes &&
@@ -1326,29 +1382,32 @@ export function renderMapScene(
       const tctx = tc.getContext('2d')!;
       tctx.clearRect(0, 0, cacheW, cacheH);
       if (doc.layers.terrain) {
-        drawTerrain(tctx, doc, level, ppg, null);
+        drawTerrain(tctx, doc, level, layerPpg, null);
       } else {
         tctx.fillStyle = '#1d2027';
         tctx.fillRect(0, 0, cacheW, cacheH);
       }
       if (doc.layers.water) {
-        drawWater(tctx, doc, level, ppg, null);
+        drawWater(tctx, doc, level, layerPpg, waterPreview);
       }
-      terrainCacheState = {
-        levelId: level.id,
-        width: doc.width,
-        height: doc.height,
-        ppg,
-        terrainBase: level.terrainBase,
-        terrainStrokes: level.terrainStrokes,
-        waterStrokes: level.waterStrokes,
-        showTerrain: doc.layers.terrain,
-        showWater: doc.layers.water,
-      };
+      // A bitmap holding a half-painted stroke is never reused.
+      terrainCacheState = waterPreview
+        ? null
+        : {
+            levelId: level.id,
+            width: doc.width,
+            height: doc.height,
+            ppg: layerPpg,
+            terrainBase: level.terrainBase,
+            terrainStrokes: level.terrainStrokes,
+            waterStrokes: level.waterStrokes,
+            showTerrain: doc.layers.terrain,
+            showWater: doc.layers.water,
+          };
     }
 
     if (terrainCacheCanvas) {
-      ctx.drawImage(terrainCacheCanvas, 0, 0);
+      ctx.drawImage(terrainCacheCanvas, 0, 0, mapW, mapH);
     }
     if (options.previewTerrainStroke && doc.layers.terrain) {
       drawTerrainStrokeFeathered(
@@ -1368,7 +1427,7 @@ export function renderMapScene(
       ctx.fillRect(0, 0, mapW, mapH);
     }
     if (doc.layers.water) {
-      drawWater(ctx, doc, level, ppg, options.previewWaterStroke);
+      drawWater(ctx, doc, level, ppg, waterPreview);
     }
   }
 
@@ -1478,7 +1537,7 @@ export function renderMapScene(
 
   // 11. Dynamic Lighting & Ambient Shadows
   if ((options.showLighting ?? true) && doc.layers.lighting) {
-    drawLighting(ctx, doc, level, ppg);
+    drawLighting(ctx, doc, level, ppg, limit && limit / 2);
   }
 
   // 12. Grid
@@ -1487,15 +1546,31 @@ export function renderMapScene(
   }
 
   // 13. Selection & Light Handles (editor only)
+  if (options.overlay !== false) drawEditorOverlay(ctx, doc, options);
+
+  ctx.restore();
+}
+
+export function drawEditorOverlay(
+  ctx: CanvasRenderingContext2D,
+  doc: MapDocument,
+  options: RenderOptions
+) {
+  const level =
+    doc.levels.find((l) => l.id === doc.activeLevelId) ?? doc.levels[0];
+  if (!level) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, doc.width * options.ppg, doc.height * options.ppg);
+  ctx.clip();
   drawSelectionAndHandles(
     ctx,
     doc,
     level,
-    ppg,
+    options.ppg,
     options.selection,
     options.selectedItems,
     options.showLightHandles
   );
-
   ctx.restore();
 }
