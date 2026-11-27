@@ -15,7 +15,12 @@ import {
 import { extractOccluderSegments } from '../engine/lighting';
 import { uid } from '../engine/presets';
 import { getPropDefinition, getPropSprite } from '../engine/props';
-import { bendHandles, bendsWithHandle, samplePath } from '../engine/paths';
+import {
+  bendHandles,
+  bendsWithHandle,
+  polylineTouchesRect,
+  samplePath,
+} from '../engine/paths';
 import { renderMapScene, traceBrushShape } from '../engine/renderer';
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
@@ -415,8 +420,9 @@ export function MapCanvas() {
       // 5. Walls
       for (let i = activeLevel.walls.length - 1; i >= 0; i--) {
         const w = activeLevel.walls[i];
-        for (let k = 0; k < w.points.length - 1; k++) {
-          if (distToSegment(pt, w.points[k], w.points[k + 1]).dist <= 0.35) {
+        const segments = w.closed ? w.points.length : w.points.length - 1;
+        for (let k = 0; k < segments; k++) {
+          if (distToSegment(pt, w.points[k], w.points[(k + 1) % w.points.length]).dist <= 0.35) {
             return { kind: 'wall', id: w.id };
           }
         }
@@ -1192,6 +1198,13 @@ export function MapCanvas() {
         for (const p of activeLevel.portals) {
           if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) {
             boxed.push({ kind: 'portal', id: p.id });
+          }
+        }
+        const boxMin = { x: minX, y: minY };
+        const boxMax = { x: maxX, y: maxY };
+        for (const w of activeLevel.walls) {
+          if (polylineTouchesRect(w.points, w.closed, boxMin, boxMax)) {
+            boxed.push({ kind: 'wall', id: w.id });
           }
         }
         if (e.ctrlKey || e.metaKey || e.shiftKey) {

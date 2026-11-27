@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PathItem } from '../../types/map';
-import { bendHandles, bendsWithHandle, samplePath } from '../paths';
+import { bendHandles, bendsWithHandle, polylineTouchesRect, samplePath } from '../paths';
 
 const base: PathItem = {
   id: 'p',
@@ -32,5 +32,21 @@ describe('Path geometry', () => {
     expect(bulge(0)).toBeCloseTo(0);
     expect(bulge(2)).toBeLessThan(bulge(1));
     expect(bulge(1)).toBeLessThan(0);
+  });
+});
+
+describe('Box selection of walls', () => {
+  const square = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }];
+  const touches = (x0: number, y0: number, x1: number, y1: number, closed = false) =>
+    polylineTouchesRect(square, closed, { x: x0, y: y0 }, { x: x1, y: y1 });
+
+  it('selects a wall crossed by the box, not one merely around it', () => {
+    expect(touches(1, -1, 2, 1)).toBe(true);
+    expect(touches(1, 1, 3, 3)).toBe(false);
+  });
+
+  it('counts the closing segment only on closed walls', () => {
+    expect(touches(-1, 1, 1, 2)).toBe(false);
+    expect(touches(-1, 1, 1, 2, true)).toBe(true);
   });
 });

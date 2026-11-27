@@ -93,3 +93,34 @@ export function bendsWithHandle(path: PathItem, index: number, to: Point): (Poin
       i === index ? { x: to.x - m.x, y: to.y - m.y } : (path.bends?.[i] ?? null)
     );
 }
+
+// True when any segment of the polyline crosses or lies inside the box (Liang-Barsky clipping).
+export function polylineTouchesRect(
+  points: Point[],
+  closed: boolean,
+  min: Point,
+  max: Point
+): boolean {
+  const segments = closed ? points.length : points.length - 1;
+  for (let i = 0; i < segments; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    let from = 0;
+    let to = 1;
+    const inside = [
+      [-dx, a.x - min.x],
+      [dx, max.x - a.x],
+      [-dy, a.y - min.y],
+      [dy, max.y - a.y],
+    ].every(([p, q]) => {
+      if (p === 0) return q >= 0;
+      if (p < 0) from = Math.max(from, q / p);
+      else to = Math.min(to, q / p);
+      return from <= to;
+    });
+    if (inside) return true;
+  }
+  return false;
+}
