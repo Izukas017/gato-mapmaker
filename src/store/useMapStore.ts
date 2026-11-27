@@ -164,6 +164,8 @@ interface MapStoreState {
   updateSelectedPath: (patch: Partial<PathItem>, recordUndo?: boolean) => void;
   updateSelectedRoof: (patch: Partial<RoofShape>, recordUndo?: boolean) => void;
   moveSelectedBy: (dx: number, dy: number, recordUndo?: boolean) => void;
+  commitSnapshot: (previousDoc: MapDocument) => void;
+  alignSelected: (axis: 'horizontal' | 'vertical') => void;
   copySelected: () => void;
   pasteClipboard: (targetTile?: Point | null) => void;
   duplicateSelected: () => void;
@@ -717,6 +719,98 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           : l.roofs,
       }));
       return recordUndo ? pushCommit(s, next) : { doc: next };
+    }),
+
+  commitSnapshot: (previousDoc) =>
+    set((s) => ({
+      past: [...s.past.slice(-(MAX_HISTORY - 1)), previousDoc],
+      future: [],
+    })),
+
+  alignSelected: (axis) =>
+    set((s) => {
+      const items =
+        s.selectedItems.length > 0
+          ? s.selectedItems
+          : s.selection
+            ? [s.selection]
+            : [];
+      if (items.length < 2) return s;
+
+      const level = s.doc.levels.find((l) => l.id === s.doc.activeLevelId);
+      if (!level) return s;
+
+      // Anchor to the first selected point-based item
+      let anchorX: number | null = null;
+      let anchorY: number | null = null;
+      for (const ref of items) {
+        if (ref.kind === 'object') {
+          const it = level.objects.find((o) => o.id === ref.id);
+          if (it) {
+            anchorX = it.x;
+            anchorY = it.y;
+            break;
+          }
+        } else if (ref.kind === 'light') {
+          const it = level.lights.find((o) => o.id === ref.id);
+          if (it) {
+            anchorX = it.x;
+            anchorY = it.y;
+            break;
+          }
+        } else if (ref.kind === 'portal') {
+          const it = level.portals.find((o) => o.id === ref.id);
+          if (it) {
+            anchorX = it.x;
+            anchorY = it.y;
+            break;
+          }
+        }
+      }
+      if (anchorX === null || anchorY === null) return s;
+
+      const objIds = new Set(items.filter((i) => i.kind === 'object').map((i) => i.id));
+      const lightIds = new Set(items.filter((i) => i.kind === 'light').map((i) => i.id));
+      const portalIds = new Set(items.filter((i) => i.kind === 'portal').map((i) => i.id));
+
+      const nextDoc = updateActiveLevel(s.doc, (l) => ({
+        ...l,
+        objects: objIds.size
+          ? l.objects.map((o) =>
+              objIds.has(o.id)
+                ? {
+                    ...o,
+                    x: axis === 'vertical' ? anchorX! : o.x,
+                    y: axis === 'horizontal' ? anchorY! : o.y,
+                  }
+                : o
+            )
+          : l.objects,
+        lights: lightIds.size
+          ? l.lights.map((o) =>
+              lightIds.has(o.id)
+                ? {
+                    ...o,
+                    x: axis === 'vertical' ? anchorX! : o.x,
+                    y: axis === 'horizontal' ? anchorY! : o.y,
+                  }
+                : o
+            )
+          : l.lights,
+        portals: portalIds.size
+          ? l.portals.map((o) =>
+              portalIds.has(o.id)
+                ? {
+                    ...o,
+                    x: axis === 'vertical' ? anchorX! : o.x,
+                    y: axis === 'horizontal' ? anchorY! : o.y,
+                  }
+                : o
+            )
+          : l.portals,
+      }));
+
+      return pushCommit(s, nextDoc);
     }),
 
   copySelected: () => {

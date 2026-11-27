@@ -5,7 +5,7 @@ import { getPropDefinition, getPropSprite } from '../engine/props';
 import { renderMapScene, traceBrushShape } from '../engine/renderer';
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
-import type { MapLevel, Point, SelectionRef } from '../types/map';
+import type { MapDocument, MapLevel, Point, SelectionRef } from '../types/map';
 
 function pointInPolygon(pt: Point, poly: Point[]): boolean {
   let inside = false;
@@ -74,6 +74,7 @@ export function MapCanvas() {
   const panY = useMapStore((s) => s.panY);
   const showCanvasHints = useUiPrefs((s) => s.showCanvasHints);
   const alwaysShowLightHandles = useUiPrefs((s) => s.alwaysShowLightHandles);
+  const alignToObjects = useUiPrefs((s) => s.alignToObjects);
   const zoomSpeed = useUiPrefs((s) => s.zoomSpeed);
 
   const setViewport = useMapStore((s) => s.setViewport);
@@ -88,6 +89,10 @@ export function MapCanvas() {
   const [draftPoints, setDraftPoints] = useState<Point[]>([]);
   const [rectStart, setRectStart] = useState<Point | null>(null);
   const [marqueeStart, setMarqueeStart] = useState<Point | null>(null);
+  const [alignGuides, setAlignGuides] = useState<{ x: number | null; y: number | null }>({
+    x: null,
+    y: null,
+  });
   const [isPanning, setIsPanning] = useState(false);
   const [spaceDown, setSpaceDown] = useState(false);
   const [renderTick, setRenderTick] = useState(0);
@@ -101,6 +106,8 @@ export function MapCanvas() {
     lastTile: Point;
     strokePoints: Point[];
     moved: boolean;
+    snapshotDoc?: MapDocument | null;
+    anchorOffset?: Point;
   }>({
     mode: 'none',
     startScreenX: 0,
@@ -110,10 +117,63 @@ export function MapCanvas() {
     lastTile: { x: 0, y: 0 },
     strokePoints: [],
     moved: false,
+    snapshotDoc: null,
+    anchorOffset: { x: 0, y: 0 },
   });
 
   const activeLevel =
     doc.levels.find((l) => l.id === doc.activeLevelId) ?? doc.levels[0];
+
+  const snapWithObjectGuides = useCallback(
+    (
+      pt: Point,
+      excludeRefs: SelectionRef[] = []
+    ): { pt: Point; guideX: number | null; guideY: number | null } => {
+      if (!alignToObjects) return { pt, guideX: null, guideY: null };
+      const threshold = 0.22;
+      const exObj = new Set(excludeRefs.filter((r) => r.kind === 'object').map((r) => r.id));
+      const exLight = new Set(excludeRefs.filter((r) => r.kind === 'light').map((r) => r.id));
+      const exPortal = new Set(excludeRefs.filter((r) => r.kind === 'portal').map((r) => r.id));
+
+      let bestDx = threshold;
+      let bestDy = threshold;
+      let guideX: number | null = null;
+      let guideY: number | null = null;
+
+      const check = (ox: number, oy: number) => {
+        const dx = Math.abs(pt.x - ox);
+        if (dx < bestDx) {
+          bestDx = dx;
+          guideX = ox;
+        }
+        const dy = Math.abs(pt.y - oy);
+        if (dy < bestDy) {
+          bestDy = dy;
+          guideY = oy;
+        }
+      };
+
+      for (const o of activeLevel.objects) {
+        if (!exObj.has(o.id)) check(o.x, o.y);
+      }
+      for (const l of activeLevel.lights) {
+        if (!exLight.has(l.id)) check(l.x, l.y);
+      }
+      for (const p of activeLevel.portals) {
+        if (!exPortal.has(p.id)) check(p.x, p.y);
+      }
+
+      return {
+        pt: {
+          x: guideX !== null ? guideX : pt.x,
+          y: guideY !== null ? guideY : pt.y,
+        },
+        guideX,
+        guideY,
+      };
+    },
+    [activeLevel, alignToObjects]
+  );
 
   const screenToTile = useCallback(
     (clientX: number, clientY: number): Point => {
@@ -531,11 +591,12 @@ export function MapCanvas() {
       if (activeTool === 'object') {
         const def = getPropDefinition(toolSettings.propId, doc.customAssets);
         if (def) {
+          const objPos = !doc.grid.snap ? snapWithObjectGuides(snapped).pt : snapped;
           const pw = def.widthTiles * ppg * toolSettings.propScale;
           const ph = def.heightTiles * ppg * toolSettings.propScale;
           ctx.save();
           ctx.globalAlpha = 0.72;
-          ctx.translate(snapped.x * ppg, snapped.y * ppg);
+          ctx.translate(objPos.x * ppg, objPos.y * ppg);
           ctx.rotate((toolSettings.propRotationDeg * Math.PI) / 180);
           const sprite = getPropSprite(toolSettings.propId);
           if (sprite) {
@@ -586,6 +647,29 @@ export function MapCanvas() {
       }
     }
 
+    // Smart alignment guide lines
+    if (alignGuides.x !== null || alignGuides.y !== null) {
+      ctx.save();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([6, 4]);
+      if (alignGuides.x !== null) {
+        const gx = alignGuides.x * ppg;
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, mapH);
+        ctx.stroke();
+      }
+      if (alignGuides.y !== null) {
+        const gy = alignGuides.y * ppg;
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(mapW, gy);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     ctx.restore();
     ctx.restore();
   }, [
@@ -602,7 +686,9 @@ export function MapCanvas() {
     draftPoints,
     rectStart,
     marqueeStart,
+    alignGuides,
     alwaysShowLightHandles,
+    snapWithObjectGuides,
     renderTick,
   ]);
 
@@ -658,6 +744,18 @@ export function MapCanvas() {
         if (!alreadyIn) {
           setSelection(hit);
         }
+        // Anchor offset from cursor to primary hit item center for smart alignment
+        let anchorPt = snapped;
+        if (hit.kind === 'object') {
+          const it = activeLevel.objects.find((o) => o.id === hit.id);
+          if (it) anchorPt = { x: it.x, y: it.y };
+        } else if (hit.kind === 'light') {
+          const it = activeLevel.lights.find((o) => o.id === hit.id);
+          if (it) anchorPt = { x: it.x, y: it.y };
+        } else if (hit.kind === 'portal') {
+          const it = activeLevel.portals.find((o) => o.id === hit.id);
+          if (it) anchorPt = { x: it.x, y: it.y };
+        }
         dragRef.current = {
           mode: 'move_sel',
           startScreenX: e.clientX,
@@ -667,6 +765,8 @@ export function MapCanvas() {
           lastTile: snapped,
           strokePoints: [],
           moved: false,
+          snapshotDoc: store.doc,
+          anchorOffset: { x: anchorPt.x - snapped.x, y: anchorPt.y - snapped.y },
         };
       } else {
         setSelection(null);
@@ -745,6 +845,8 @@ export function MapCanvas() {
 
     if (activeTool === 'object') {
       const placeOne = (pt: Point, randomJitter: boolean) => {
+        const alignedPt =
+          !doc.grid.snap && !randomJitter ? snapWithObjectGuides(pt).pt : pt;
         const rot = randomJitter
           ? Math.random() * Math.PI * 2
           : (toolSettings.propRotationDeg * Math.PI) / 180;
@@ -754,8 +856,8 @@ export function MapCanvas() {
         store.addObject({
           id: uid('obj'),
           propId: toolSettings.propId,
-          x: pt.x,
-          y: pt.y,
+          x: alignedPt.x,
+          y: alignedPt.y,
           scaleX: scale,
           scaleY: scale,
           rotation: rot,
@@ -814,15 +916,39 @@ export function MapCanvas() {
     }
 
     if (drag.mode === 'move_sel') {
-      const snapped = snapPoint(rawTile, doc.grid.snap, doc.grid.snapSubdivision);
-      const dx = snapped.x - drag.lastTile.x;
-      const dy = snapped.y - drag.lastTile.y;
+      let target = snapPoint(rawTile, doc.grid.snap, doc.grid.snapSubdivision);
+      if (!doc.grid.snap && !e.altKey && alignToObjects) {
+        const off = drag.anchorOffset ?? { x: 0, y: 0 };
+        const anchorTarget = {
+          x: target.x + off.x,
+          y: target.y + off.y,
+        };
+        const guided = snapWithObjectGuides(anchorTarget, selectedItems);
+        target = {
+          x: guided.pt.x - off.x,
+          y: guided.pt.y - off.y,
+        };
+        setAlignGuides({ x: guided.guideX, y: guided.guideY });
+      } else if (alignGuides.x !== null || alignGuides.y !== null) {
+        setAlignGuides({ x: null, y: null });
+      }
+      const dx = target.x - drag.lastTile.x;
+      const dy = target.y - drag.lastTile.y;
       if (Math.abs(dx) > 1e-4 || Math.abs(dy) > 1e-4) {
         useMapStore.getState().moveSelectedBy(dx, dy, false);
-        drag.lastTile = snapped;
+        drag.lastTile = target;
         drag.moved = true;
       }
       return;
+    }
+
+    if (activeTool === 'object' && !doc.grid.snap && !e.altKey && alignToObjects) {
+      const guided = snapWithObjectGuides(rawTile);
+      if (guided.guideX !== alignGuides.x || guided.guideY !== alignGuides.y) {
+        setAlignGuides({ x: guided.guideX, y: guided.guideY });
+      }
+    } else if (alignGuides.x !== null || alignGuides.y !== null) {
+      setAlignGuides({ x: null, y: null });
     }
 
     if (drag.mode === 'terrain' || drag.mode === 'water') {
@@ -863,6 +989,12 @@ export function MapCanvas() {
 
     if (drag.mode === 'pan') {
       setIsPanning(false);
+    } else if (drag.mode === 'move_sel') {
+      if (drag.moved && drag.snapshotDoc) {
+        useMapStore.getState().commitSnapshot(drag.snapshotDoc);
+      }
+      drag.snapshotDoc = null;
+      setAlignGuides({ x: null, y: null });
     } else if (drag.mode === 'terrain' && drag.strokePoints.length > 0) {
       useMapStore.getState().addTerrainStroke({
         id: uid('ts'),

@@ -372,6 +372,15 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
             <span>{doc.grid.snap ? 'SÍ' : 'NO'}</span>
           </button>
 
+          <button
+            type="button"
+            className={`toggle-btn ${prefs.alignToObjects ? 'active' : ''}`}
+            onClick={() => prefs.setPrefs({ alignToObjects: !prefs.alignToObjects })}
+          >
+            <span>Alinear objetos entre sí (guías sin cuadrícula)</span>
+            <span>{prefs.alignToObjects ? 'SÍ' : 'NO'}</span>
+          </button>
+
           <div className="control-row">
             <span>Tipo de cuadrícula</span>
             <select

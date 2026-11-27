@@ -7,6 +7,7 @@ export interface UiPrefs {
   rightPanelWidth: number;
   showCanvasHints: boolean;
   alwaysShowLightHandles: boolean;
+  alignToObjects: boolean;
   propColumns: 2 | 3 | 4;
   zoomSpeed: 'slow' | 'normal' | 'fast';
   autoSaveEnabled: boolean;
@@ -22,6 +23,7 @@ export const DEFAULT_UI_PREFS: UiPrefs = {
   rightPanelWidth: 276,
   showCanvasHints: true,
   alwaysShowLightHandles: false,
+  alignToObjects: true,
   propColumns: 3,
   zoomSpeed: 'normal',
   autoSaveEnabled: true,
@@ -81,6 +83,7 @@ export const useUiPrefs = create<UiPrefsStore>((set) => ({
         showCanvasHints: patch.showCanvasHints ?? s.showCanvasHints,
         alwaysShowLightHandles:
           patch.alwaysShowLightHandles ?? s.alwaysShowLightHandles,
+        alignToObjects: patch.alignToObjects ?? s.alignToObjects,
         propColumns: patch.propColumns ?? s.propColumns,
         zoomSpeed: patch.zoomSpeed ?? s.zoomSpeed,
         autoSaveEnabled: patch.autoSaveEnabled ?? s.autoSaveEnabled,

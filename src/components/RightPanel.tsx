@@ -95,6 +95,7 @@ export function RightPanel() {
   const selection = useMapStore((s) => s.selection);
   const selectedItems = useMapStore((s) => s.selectedItems);
   const copySelected = useMapStore((s) => s.copySelected);
+  const alignSelected = useMapStore((s) => s.alignSelected);
 
   const toggleLayer = useMapStore((s) => s.toggleLayer);
   const updateAmbient = useMapStore((s) => s.updateAmbient);
@@ -282,6 +283,27 @@ export function RightPanel() {
                 </button>
               </div>
             </div>
+
+            {selectedItems.length >= 2 && (
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  className="btn-secondary"
+                  style={{ flex: 1, padding: '4px 6px', fontSize: 11 }}
+                  onClick={() => alignSelected('horizontal')}
+                  title="Alinear todos en la misma fila horizontal (misma Y)"
+                >
+                  Alinear Horiz. (—)
+                </button>
+                <button
+                  className="btn-secondary"
+                  style={{ flex: 1, padding: '4px 6px', fontSize: 11 }}
+                  onClick={() => alignSelected('vertical')}
+                  title="Alinear todos en la misma columna vertical (mismo X)"
+                >
+                  Alinear Vert. (|)
+                </button>
+              </div>
+            )}
 
             {selectedObject && (
               <>

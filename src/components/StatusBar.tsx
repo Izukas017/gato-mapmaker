@@ -1,11 +1,14 @@
 import React from 'react';
 import { useMapStore } from '../store/useMapStore';
+import { useUiPrefs } from '../store/useUiPrefs';
 
 export function StatusBar() {
   const doc = useMapStore((s) => s.doc);
   const zoom = useMapStore((s) => s.zoom);
   const cursorTile = useMapStore((s) => s.cursorTile);
   const updateGrid = useMapStore((s) => s.updateGrid);
+  const alignToObjects = useUiPrefs((s) => s.alignToObjects);
+  const setPrefs = useUiPrefs((s) => s.setPrefs);
 
   const activeLevel =
     doc.levels.find((l) => l.id === doc.activeLevelId) ?? doc.levels[0];
@@ -25,6 +28,17 @@ export function StatusBar() {
       </div>
 
       <div className="statusbar-group">
+        <button
+          onClick={() => setPrefs({ alignToObjects: !alignToObjects })}
+          style={{
+            color: alignToObjects ? '#38bdf8' : 'var(--text-muted)',
+            fontSize: 11,
+            fontFamily: 'inherit',
+          }}
+          title="Alinear objetos entre sí horizontal y verticalmente cuando la cuadrícula está desactivada (mantén Alt para ignorar)"
+        >
+          Alinear objetos: <b>{alignToObjects ? 'SÍ' : 'NO'}</b>
+        </button>
         <button
           onClick={() => updateGrid({ snap: !doc.grid.snap })}
           style={{
