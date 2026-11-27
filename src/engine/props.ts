@@ -1,3 +1,4 @@
+import { drawAnimal, EXTRA_ANIMALS } from './animals';
 import type { CustomAsset, PropCategory, PropDefinition } from '../types/map';
 
 export const PROP_CATEGORIES: { id: PropCategory; label: string }[] = [
@@ -104,6 +105,8 @@ export const BUILTIN_PROPS: PropDefinition[] = [
   { id: 'bear_brown', name: 'Oso Pardo', category: 'animals', widthTiles: 1.35, heightTiles: 1.8, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'oso', 'bosque', 'bestia'] },
   { id: 'deer_stag', name: 'Ciervo Astado', category: 'animals', widthTiles: 1.15, heightTiles: 1.75, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'ciervo', 'venado', 'bosque'] },
   { id: 'boar_wild', name: 'Jabalí', category: 'animals', widthTiles: 0.95, heightTiles: 1.4, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'jabali', 'bosque', 'caza'] },
+
+  ...EXTRA_ANIMALS,
 
   // Tavern & Kitchen
   { id: 'bar_counter', name: 'Barra Taberna', category: 'tavern', widthTiles: 3.2, heightTiles: 0.9, defaultLayer: 'above_floor', defaultShadow: true, tags: ['barra', 'taberna', 'mostrador'] },
@@ -279,6 +282,96 @@ export function getCustomImage(asset: CustomAsset, onLoad?: () => void): HTMLIma
   return img;
 }
 
+// Irregular pool with a clotted rim, wet depth, glints and the splatter around it.
+function drawBloodPool(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  let seed = 20;
+  const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const cx = w * 0.48;
+  const cy = h * 0.5;
+
+  // Smooth closed outline whose radius wobbles, with a few lobes reaching further out.
+  const points = Array.from({ length: 22 }, (_, i) => {
+    const angle = (i / 22) * Math.PI * 2;
+    const reach = 0.72 + rand() * 0.28 + (i % 7 === 2 ? 0.22 : 0);
+    return { x: Math.cos(angle) * w * 0.33 * reach, y: Math.sin(angle) * h * 0.31 * reach };
+  });
+  const blob = (scale: number, dx: number, dy: number) => {
+    const at = (i: number) => {
+      const p = points[i % points.length];
+      return { x: cx + dx + p.x * scale, y: cy + dy + p.y * scale };
+    };
+    const mid = (i: number) => ({
+      x: (at(i).x + at(i + 1).x) / 2,
+      y: (at(i).y + at(i + 1).y) / 2,
+    });
+    ctx.beginPath();
+    ctx.moveTo(mid(0).x, mid(0).y);
+    for (let i = 1; i <= points.length; i++) {
+      ctx.quadraticCurveTo(at(i).x, at(i).y, mid(i).x, mid(i).y);
+    }
+    ctx.closePath();
+  };
+  const drop = (x: number, y: number, rx: number, ry: number, turn: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, turn, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  // Thin smear soaking into the floor
+  ctx.fillStyle = 'rgba(96, 8, 10, 0.32)';
+  blob(1.1, 0, 0);
+  ctx.fill();
+
+  // Body of the pool: dark and clotted at the rim, richer where it is deeper
+  const body = ctx.createRadialGradient(cx - w * 0.05, cy, w * 0.04, cx, cy, w * 0.38);
+  body.addColorStop(0, 'rgba(92, 2, 8, 0.96)');
+  body.addColorStop(0.55, 'rgba(142, 10, 16, 0.95)');
+  body.addColorStop(1, 'rgba(104, 6, 10, 0.92)');
+  ctx.fillStyle = body;
+  blob(1, 0, 0);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(52, 0, 4, 0.75)';
+  ctx.lineWidth = Math.max(1.5, w * 0.018);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(58, 0, 6, 0.55)';
+  blob(0.52, -w * 0.05, h * 0.03);
+  ctx.fill();
+
+  // Splashes flung outwards, stretched along the direction they flew
+  for (let i = 0; i < 34; i++) {
+    const angle = rand() * Math.PI * 2;
+    const far = 0.32 + rand() * 0.11;
+    const r = w * (0.006 + rand() * rand() * 0.032);
+    const x = cx + Math.cos(angle) * w * far;
+    const y = cy + Math.sin(angle) * h * far;
+    drop(x, y, r * (1 + rand() * 1.4), r, angle, 'rgba(116, 6, 10, 0.9)');
+  }
+  // Two longer trails ending in a bead
+  for (const [angle, far] of [[-0.55, 0.46], [2.5, 0.45]]) {
+    const x = cx + Math.cos(angle) * w * far;
+    const y = cy + Math.sin(angle) * h * far;
+    ctx.strokeStyle = 'rgba(116, 6, 10, 0.88)';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = w * 0.028;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * w * 0.24, cy + Math.sin(angle) * h * 0.24);
+    ctx.quadraticCurveTo((cx + x) / 2 + w * 0.07, (cy + y) / 2 + h * 0.04, x, y);
+    ctx.stroke();
+    drop(x, y, w * 0.032, w * 0.027, angle, 'rgba(122, 6, 12, 0.95)');
+  }
+
+  // Wet reflections
+  ctx.strokeStyle = 'rgba(255, 190, 180, 0.5)';
+  ctx.lineCap = 'round';
+  ctx.lineWidth = w * 0.022;
+  ctx.beginPath();
+  ctx.ellipse(cx - w * 0.04, cy - h * 0.02, w * 0.19, h * 0.17, 0, 3.55, 4.45);
+  ctx.stroke();
+  drop(cx + w * 0.13, cy + h * 0.1, w * 0.02, w * 0.012, -0.5, 'rgba(255, 200, 190, 0.42)');
+  drop(cx - w * 0.17, cy - h * 0.01, w * 0.01, w * 0.008, 0, 'rgba(255, 200, 190, 0.5)');
+}
+
 function renderPropSprite(def: PropDefinition): HTMLCanvasElement {
   const w = Math.max(48, Math.round(def.widthTiles * PX_PER_TILE));
   const h = Math.max(48, Math.round(def.heightTiles * PX_PER_TILE));
@@ -289,6 +382,8 @@ function renderPropSprite(def: PropDefinition): HTMLCanvasElement {
 
   const cx = w / 2;
   const cy = h / 2;
+
+  if (drawAnimal(ctx, def.id, w, h)) return canvas;
 
   switch (def.id) {
     case 'bed_teal':
@@ -1756,12 +1851,7 @@ function renderPropSprite(def: PropDefinition): HTMLCanvasElement {
     }
 
     case 'blood_pool': {
-      ctx.fillStyle = 'rgba(138, 18, 24, 0.82)';
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, w * 0.38, h * 0.32, 0.3, 0, Math.PI * 2);
-      ctx.arc(cx + 22, cy - 12, 14, 0, Math.PI * 2);
-      ctx.arc(cx - 20, cy + 14, 10, 0, Math.PI * 2);
-      ctx.fill();
+      drawBloodPool(ctx, w, h);
       break;
     }
 
