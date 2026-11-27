@@ -33,6 +33,7 @@ import {
   createSanctuaryPreset,
   uid,
 } from '../engine/presets';
+import { PROP_LIGHTS } from '../engine/props';
 import { useUiPrefs } from './useUiPrefs';
 
 export interface ToolSettings {
@@ -526,16 +527,22 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       )
     ),
 
-  addObject: (obj) =>
+  addObject: (obj) => {
+    const preset = PROP_LIGHTS[obj.propId];
+    const placed =
+      preset && !obj.light
+        ? { ...obj, light: { ...preset, enabled: true, castShadows: true } }
+        : obj;
     set((s) =>
       pushCommit(
         s,
         updateActiveLevel(s.doc, (l) => ({
           ...l,
-          objects: [...l.objects, obj],
+          objects: [...l.objects, placed],
         }))
       )
-    ),
+    );
+  },
 
   addLight: (light) =>
     set((s) =>

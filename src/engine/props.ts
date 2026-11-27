@@ -223,6 +223,30 @@ const spriteCache = new Map<string, HTMLCanvasElement>();
 const thumbCache = new Map<string, string>();
 const customImageCache = new Map<string, HTMLImageElement>();
 
+// Props that emit their own light as soon as they are placed (radius in tiles).
+export const PROP_LIGHTS: Record<string, { color: string; radius: number; intensity: number }> = {
+  brazier: { color: '#ff9a3c', radius: 5, intensity: 1 },
+  brazier_teal: { color: '#38bdf8', radius: 5, intensity: 1 },
+  torch_wall: { color: '#ffae42', radius: 5, intensity: 1 },
+  candle_cluster: { color: '#ffc66e', radius: 2.5, intensity: 0.8 },
+  candelabra: { color: '#ffc66e', radius: 4, intensity: 1 },
+  chandelier_gold: { color: '#ffd58a', radius: 7, intensity: 1 },
+  lantern: { color: '#ffc46b', radius: 5, intensity: 1 },
+  crystal_lamp: { color: '#c084fc', radius: 5, intensity: 1 },
+  street_lamppost: { color: '#ffd27a', radius: 6, intensity: 1 },
+  campfire: { color: '#ff8c2e', radius: 6, intensity: 1 },
+  fireplace: { color: '#ff8c2e', radius: 5, intensity: 1 },
+  kitchen_stove: { color: '#ff7a1f', radius: 3.5, intensity: 1 },
+  forge_furnace: { color: '#ff6a14', radius: 4.5, intensity: 1 },
+  roast_spit: { color: '#ff8c2e', radius: 3.5, intensity: 1 },
+  sauna_brazier: { color: '#ff9d2e', radius: 3.5, intensity: 0.8 },
+  portal_gate: { color: '#a855f7', radius: 5, intensity: 1 },
+  magic_circle: { color: '#5eead4', radius: 4, intensity: 0.8 },
+  crystal_cluster: { color: '#38bdf8', radius: 3.5, intensity: 0.8 },
+  crystal_magenta: { color: '#d946ef', radius: 3.5, intensity: 0.8 },
+  obelisk_runic: { color: '#4de3e8', radius: 3.5, intensity: 0.8 },
+};
+
 const PX_PER_TILE = 96;
 
 export function getPropDefinition(propId: string, customAssets: CustomAsset[] = []): PropDefinition | undefined {
