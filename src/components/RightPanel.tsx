@@ -92,6 +92,8 @@ const SELECTION_LABELS = {
 export function RightPanel() {
   const doc = useMapStore((s) => s.doc);
   const selection = useMapStore((s) => s.selection);
+  const selectedItems = useMapStore((s) => s.selectedItems);
+  const copySelected = useMapStore((s) => s.copySelected);
 
   const toggleLayer = useMapStore((s) => s.toggleLayer);
   const updateAmbient = useMapStore((s) => s.updateAmbient);
@@ -248,19 +250,27 @@ export function RightPanel() {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span className="section-label" style={{ marginBottom: 0, color: 'var(--accent-hover)' }}>
-                {SELECTION_LABELS[selection.kind]}
+                {selectedItems.length > 1
+                  ? `${selectedItems.length} elementos seleccionados`
+                  : SELECTION_LABELS[selection.kind]}
               </span>
               <div style={{ display: 'flex', gap: 4 }}>
-                {(selection.kind === 'object' || selection.kind === 'light') && (
-                  <button
-                    className="btn-secondary"
-                    style={{ padding: '3px 6px' }}
-                    onClick={duplicateSelected}
-                    title="Duplicar (Ctrl+D)"
-                  >
-                    <Copy size={12} />
-                  </button>
-                )}
+                <button
+                  className="btn-secondary"
+                  style={{ padding: '3px 6px', fontSize: 10 }}
+                  onClick={copySelected}
+                  title="Copiar (Ctrl+C)"
+                >
+                  Copiar
+                </button>
+                <button
+                  className="btn-secondary"
+                  style={{ padding: '3px 6px' }}
+                  onClick={duplicateSelected}
+                  title="Duplicar (Ctrl+D)"
+                >
+                  <Copy size={12} />
+                </button>
                 <button
                   className="btn-danger"
                   style={{ padding: '3px 6px' }}

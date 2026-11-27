@@ -68,6 +68,7 @@ export function MapCanvas() {
   const activeTool = useMapStore((s) => s.activeTool);
   const toolSettings = useMapStore((s) => s.toolSettings);
   const selection = useMapStore((s) => s.selection);
+  const selectedItems = useMapStore((s) => s.selectedItems);
   const zoom = useMapStore((s) => s.zoom);
   const panX = useMapStore((s) => s.panX);
   const panY = useMapStore((s) => s.panY);
@@ -77,6 +78,8 @@ export function MapCanvas() {
 
   const setViewport = useMapStore((s) => s.setViewport);
   const setSelection = useMapStore((s) => s.setSelection);
+  const toggleSelectionItem = useMapStore((s) => s.toggleSelectionItem);
+  const setSelectedItems = useMapStore((s) => s.setSelectedItems);
   const setCursorTile = useMapStore((s) => s.setCursorTile);
   const updateToolSettings = useMapStore((s) => s.updateToolSettings);
 
@@ -84,6 +87,7 @@ export function MapCanvas() {
   const [hoverTile, setHoverTile] = useState<Point | null>(null);
   const [draftPoints, setDraftPoints] = useState<Point[]>([]);
   const [rectStart, setRectStart] = useState<Point | null>(null);
+  const [marqueeStart, setMarqueeStart] = useState<Point | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [spaceDown, setSpaceDown] = useState(false);
   const [renderTick, setRenderTick] = useState(0);
@@ -172,6 +176,16 @@ export function MapCanvas() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         useMapStore.getState().redo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        useMapStore.getState().copySelected();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        useMapStore.getState().pasteClipboard(hoverTile);
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
@@ -413,6 +427,7 @@ export function MapCanvas() {
       showGrid: doc.layers.grid,
       showLighting: doc.layers.lighting,
       selection,
+      selectedItems,
       showLightHandles:
         alwaysShowLightHandles || activeTool === 'light' || activeTool === 'select',
       previewTerrainStroke,
@@ -428,6 +443,21 @@ export function MapCanvas() {
     // Interactive tool previews
     if (hoverTile) {
       const snapped = snapPoint(hoverTile, doc.grid.snap, doc.grid.snapSubdivision);
+
+      if (activeTool === 'select' && marqueeStart) {
+        const x0 = Math.min(marqueeStart.x, hoverTile.x) * ppg;
+        const y0 = Math.min(marqueeStart.y, hoverTile.y) * ppg;
+        const w = Math.abs(hoverTile.x - marqueeStart.x) * ppg;
+        const h = Math.abs(hoverTile.y - marqueeStart.y) * ppg;
+        ctx.save();
+        ctx.fillStyle = 'rgba(217, 140, 54, 0.14)';
+        ctx.strokeStyle = '#f0a848';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 3]);
+        ctx.fillRect(x0, y0, w, h);
+        ctx.strokeRect(x0, y0, w, h);
+        ctx.restore();
+      }
 
       if (activeTool === 'terrain' || activeTool === 'water') {
         const isTerrain = activeTool === 'terrain';
@@ -564,12 +594,14 @@ export function MapCanvas() {
     activeTool,
     toolSettings,
     selection,
+    selectedItems,
     zoom,
     panX,
     panY,
     hoverTile,
     draftPoints,
     rectStart,
+    marqueeStart,
     alwaysShowLightHandles,
     renderTick,
   ]);
@@ -610,8 +642,22 @@ export function MapCanvas() {
 
     if (activeTool === 'select') {
       const hit = hitTest(rawTile);
-      setSelection(hit);
+      if (e.ctrlKey || e.metaKey || e.shiftKey) {
+        if (hit) {
+          toggleSelectionItem(hit);
+        } else {
+          setMarqueeStart(rawTile);
+        }
+        return;
+      }
+
       if (hit) {
+        const alreadyIn = selectedItems.some(
+          (it) => it.kind === hit.kind && it.id === hit.id
+        );
+        if (!alreadyIn) {
+          setSelection(hit);
+        }
         dragRef.current = {
           mode: 'move_sel',
           startScreenX: e.clientX,
@@ -622,6 +668,9 @@ export function MapCanvas() {
           strokePoints: [],
           moved: false,
         };
+      } else {
+        setSelection(null);
+        setMarqueeStart(rawTile);
       }
       return;
     }
@@ -839,6 +888,43 @@ export function MapCanvas() {
       });
     }
 
+    if (activeTool === 'select' && marqueeStart) {
+      const minX = Math.min(marqueeStart.x, rawTile.x);
+      const maxX = Math.max(marqueeStart.x, rawTile.x);
+      const minY = Math.min(marqueeStart.y, rawTile.y);
+      const maxY = Math.max(marqueeStart.y, rawTile.y);
+      if (maxX - minX > 0.25 || maxY - minY > 0.25) {
+        const boxed: SelectionRef[] = [];
+        for (const o of activeLevel.objects) {
+          if (o.x >= minX && o.x <= maxX && o.y >= minY && o.y <= maxY) {
+            boxed.push({ kind: 'object', id: o.id });
+          }
+        }
+        for (const l of activeLevel.lights) {
+          if (l.x >= minX && l.x <= maxX && l.y >= minY && l.y <= maxY) {
+            boxed.push({ kind: 'light', id: l.id });
+          }
+        }
+        for (const p of activeLevel.portals) {
+          if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) {
+            boxed.push({ kind: 'portal', id: p.id });
+          }
+        }
+        if (e.ctrlKey || e.metaKey || e.shiftKey) {
+          const merged = [...selectedItems];
+          for (const b of boxed) {
+            if (!merged.some((m) => m.kind === b.kind && m.id === b.id)) {
+              merged.push(b);
+            }
+          }
+          setSelectedItems(merged);
+        } else {
+          setSelectedItems(boxed);
+        }
+      }
+      setMarqueeStart(null);
+    }
+
     if (activeTool === 'building' && toolSettings.buildingMode === 'rect' && rectStart) {
       const x0 = Math.min(rectStart.x, snapped.x);
       const y0 = Math.min(rectStart.y, snapped.y);
@@ -914,7 +1000,7 @@ export function MapCanvas() {
   const toolHint = (() => {
     switch (activeTool) {
       case 'select':
-        return 'Clic para seleccionar · Arrastra para mover · Ctrl+D duplicar · Supr borrar · Clic derecho/Espacio para mover vista';
+        return 'Clic o recuadro para seleccionar · Ctrl+Clic selección múltiple · Ctrl+C/V copiar/pegar · Ctrl+D duplicar · Supr borrar';
       case 'terrain':
         return 'Arrastra para pintar terreno suavizado sobre el mapa';
       case 'water':

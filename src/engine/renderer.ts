@@ -30,6 +30,7 @@ export interface RenderOptions {
   showGrid?: boolean;
   showLighting?: boolean;
   selection?: SelectionRef | null;
+  selectedItems?: SelectionRef[];
   showLightHandles?: boolean;
   previewTerrainStroke?: TerrainStroke | null;
   previewWaterStroke?: WaterStroke | null;
@@ -1027,11 +1028,21 @@ function drawSelectionAndHandles(
   level: MapLevel,
   ppg: number,
   selection: SelectionRef | null | undefined,
+  selectedItems: SelectionRef[] | undefined,
   showLightHandles: boolean | undefined
 ) {
+  const items =
+    selectedItems && selectedItems.length > 0
+      ? selectedItems
+      : selection
+        ? [selection]
+        : [];
+  const isSelected = (kind: SelectionRef['kind'], id: string) =>
+    items.some((it) => it.kind === kind && it.id === id);
+
   if (showLightHandles) {
     for (const light of level.lights) {
-      const isSel = selection?.kind === 'light' && selection.id === light.id;
+      const isSel = isSelected('light', light.id);
       const lx = light.x * ppg;
       const ly = light.y * ppg;
       ctx.save();
@@ -1055,66 +1066,68 @@ function drawSelectionAndHandles(
     }
   }
 
-  if (!selection) return;
-  ctx.save();
-  ctx.strokeStyle = '#f0a848';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([5, 4]);
+  for (const sel of items) {
+    ctx.save();
+    ctx.strokeStyle = '#f0a848';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
 
-  if (selection.kind === 'object') {
-    const obj = level.objects.find((o) => o.id === selection.id);
-    if (obj) {
-      const def = getPropDefinition(obj.propId, doc.customAssets);
-      const w = (def?.widthTiles ?? 1) * ppg * Math.abs(obj.scaleX);
-      const h = (def?.heightTiles ?? 1) * ppg * Math.abs(obj.scaleY);
-      ctx.translate(obj.x * ppg, obj.y * ppg);
-      ctx.rotate(obj.rotation);
-      ctx.strokeRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6);
-      // Rotation handle
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.moveTo(0, -h / 2 - 3);
-      ctx.lineTo(0, -h / 2 - 18);
-      ctx.stroke();
-      ctx.fillStyle = '#f0a848';
-      ctx.beginPath();
-      ctx.arc(0, -h / 2 - 18, 4.5, 0, Math.PI * 2);
-      ctx.fill();
+    if (sel.kind === 'object') {
+      const obj = level.objects.find((o) => o.id === sel.id);
+      if (obj) {
+        const def = getPropDefinition(obj.propId, doc.customAssets);
+        const w = (def?.widthTiles ?? 1) * ppg * Math.abs(obj.scaleX);
+        const h = (def?.heightTiles ?? 1) * ppg * Math.abs(obj.scaleY);
+        ctx.translate(obj.x * ppg, obj.y * ppg);
+        ctx.rotate(obj.rotation);
+        ctx.strokeRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6);
+        if (items.length === 1) {
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(0, -h / 2 - 3);
+          ctx.lineTo(0, -h / 2 - 18);
+          ctx.stroke();
+          ctx.fillStyle = '#f0a848';
+          ctx.beginPath();
+          ctx.arc(0, -h / 2 - 18, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    } else if (sel.kind === 'portal') {
+      const p = level.portals.find((it) => it.id === sel.id);
+      if (p) {
+        ctx.translate(p.x * ppg, p.y * ppg);
+        ctx.rotate(p.angle);
+        ctx.strokeRect((-p.width * ppg) / 2 - 4, -ppg * 0.25, p.width * ppg + 8, ppg * 0.5);
+      }
+    } else if (sel.kind === 'room') {
+      const r = level.rooms.find((it) => it.id === sel.id);
+      if (r) {
+        tracePolygon(ctx, r.points, ppg);
+        ctx.stroke();
+      }
+    } else if (sel.kind === 'wall') {
+      const w = level.walls.find((it) => it.id === sel.id);
+      if (w) {
+        tracePolyline(ctx, w.points, ppg, false, w.closed);
+        ctx.stroke();
+      }
+    } else if (sel.kind === 'path') {
+      const p = level.paths.find((it) => it.id === sel.id);
+      if (p) {
+        tracePolyline(ctx, p.points, ppg, p.smooth, false);
+        ctx.stroke();
+      }
+    } else if (sel.kind === 'roof') {
+      const r = level.roofs.find((it) => it.id === sel.id);
+      if (r) {
+        tracePolygon(ctx, r.points, ppg);
+        ctx.stroke();
+      }
     }
-  } else if (selection.kind === 'portal') {
-    const p = level.portals.find((it) => it.id === selection.id);
-    if (p) {
-      ctx.translate(p.x * ppg, p.y * ppg);
-      ctx.rotate(p.angle);
-      ctx.strokeRect((-p.width * ppg) / 2 - 4, -ppg * 0.25, p.width * ppg + 8, ppg * 0.5);
-    }
-  } else if (selection.kind === 'room') {
-    const r = level.rooms.find((it) => it.id === selection.id);
-    if (r) {
-      tracePolygon(ctx, r.points, ppg);
-      ctx.stroke();
-    }
-  } else if (selection.kind === 'wall') {
-    const w = level.walls.find((it) => it.id === selection.id);
-    if (w) {
-      tracePolyline(ctx, w.points, ppg, false, w.closed);
-      ctx.stroke();
-    }
-  } else if (selection.kind === 'path') {
-    const p = level.paths.find((it) => it.id === selection.id);
-    if (p) {
-      tracePolyline(ctx, p.points, ppg, p.smooth, false);
-      ctx.stroke();
-    }
-  } else if (selection.kind === 'roof') {
-    const r = level.roofs.find((it) => it.id === selection.id);
-    if (r) {
-      tracePolygon(ctx, r.points, ppg);
-      ctx.stroke();
-    }
+
+    ctx.restore();
   }
-
-  ctx.restore();
 }
 
 export function renderMapScene(
@@ -1269,6 +1282,7 @@ export function renderMapScene(
     level,
     ppg,
     options.selection,
+    options.selectedItems,
     options.showLightHandles
   );
 

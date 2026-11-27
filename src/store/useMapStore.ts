@@ -12,6 +12,7 @@ import type {
   MapObject,
   PathItem,
   PathStyleId,
+  Point,
   PortalItem,
   PortalKind,
   PropLayer,
@@ -84,6 +85,15 @@ export interface ToolSettings {
   roofOpacity: number;
 }
 
+type ClipboardEntry =
+  | { kind: 'object'; data: MapObject }
+  | { kind: 'light'; data: LightSource }
+  | { kind: 'portal'; data: PortalItem }
+  | { kind: 'room'; data: RoomShape }
+  | { kind: 'wall'; data: WallPolyline }
+  | { kind: 'path'; data: PathItem }
+  | { kind: 'roof'; data: RoofShape };
+
 interface MapStoreState {
   doc: MapDocument;
   past: MapDocument[];
@@ -91,6 +101,9 @@ interface MapStoreState {
   activeTool: ToolId;
   toolSettings: ToolSettings;
   selection: SelectionRef | null;
+  selectedItems: SelectionRef[];
+  clipboard: ClipboardEntry[];
+  pasteCount: number;
   zoom: number;
   panX: number;
   panY: number;
@@ -100,6 +113,8 @@ interface MapStoreState {
   setTool: (tool: ToolId) => void;
   updateToolSettings: (patch: Partial<ToolSettings>) => void;
   setSelection: (sel: SelectionRef | null) => void;
+  toggleSelectionItem: (sel: SelectionRef) => void;
+  setSelectedItems: (items: SelectionRef[]) => void;
   setViewport: (zoom: number, panX: number, panY: number) => void;
   setCursorTile: (pt: { x: number; y: number } | null) => void;
 
@@ -148,6 +163,8 @@ interface MapStoreState {
   updateSelectedPath: (patch: Partial<PathItem>, recordUndo?: boolean) => void;
   updateSelectedRoof: (patch: Partial<RoofShape>, recordUndo?: boolean) => void;
   moveSelectedBy: (dx: number, dy: number, recordUndo?: boolean) => void;
+  copySelected: () => void;
+  pasteClipboard: (targetTile?: Point | null) => void;
   duplicateSelected: () => void;
   deleteSelected: () => void;
 }
@@ -268,6 +285,9 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     roofOpacity: 1,
   },
   selection: null,
+  selectedItems: [],
+  clipboard: [],
+  pasteCount: 0,
   zoom: 0.55,
   panX: 80,
   panY: 20,
@@ -276,7 +296,29 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   setTool: (tool) => set({ activeTool: tool }),
   updateToolSettings: (patch) =>
     set((s) => ({ toolSettings: { ...s.toolSettings, ...patch } })),
-  setSelection: (selection) => set({ selection }),
+  setSelection: (selection) =>
+    set({
+      selection,
+      selectedItems: selection ? [selection] : [],
+    }),
+  toggleSelectionItem: (sel) =>
+    set((s) => {
+      const exists = s.selectedItems.some(
+        (it) => it.kind === sel.kind && it.id === sel.id
+      );
+      const next = exists
+        ? s.selectedItems.filter((it) => !(it.kind === sel.kind && it.id === sel.id))
+        : [...s.selectedItems, sel];
+      return {
+        selectedItems: next,
+        selection: next.length > 0 ? next[next.length - 1] : null,
+      };
+    }),
+  setSelectedItems: (items) =>
+    set({
+      selectedItems: items,
+      selection: items.length > 0 ? items[items.length - 1] : null,
+    }),
   setViewport: (zoom, panX, panY) => set({ zoom, panX, panY }),
   setCursorTile: (cursorTile) => set({ cursorTile }),
 
@@ -311,15 +353,15 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
         : preset === 'quarter'
           ? createCobblestoneQuarterPreset()
           : createBlankMap();
-    set({ doc, past: [], future: [], selection: null });
+    set({ doc, past: [], future: [], selection: null, selectedItems: [] });
   },
 
   createNewMap: (name, width, height, terrain) => {
     const doc = createBlankMap(name, width, height, terrain);
-    set({ doc, past: [], future: [], selection: null });
+    set({ doc, past: [], future: [], selection: null, selectedItems: [] });
   },
 
-  loadDocument: (doc) => set({ doc, past: [], future: [], selection: null }),
+  loadDocument: (doc) => set({ doc, past: [], future: [], selection: null, selectedItems: [] }),
 
   setMapName: (name) =>
     set((s) => ({ doc: { ...s.doc, name } })),
@@ -608,123 +650,270 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
 
   moveSelectedBy: (dx, dy, recordUndo = false) =>
     set((s) => {
-      const sel = s.selection;
-      if (!sel) return s;
-      const next = updateActiveLevel(s.doc, (l) => {
-        if (sel.kind === 'object') {
-          return {
-            ...l,
-            objects: l.objects.map((o) =>
-              o.id === sel.id ? { ...o, x: o.x + dx, y: o.y + dy } : o
-            ),
-          };
-        }
-        if (sel.kind === 'light') {
-          return {
-            ...l,
-            lights: l.lights.map((it) =>
-              it.id === sel.id ? { ...it, x: it.x + dx, y: it.y + dy } : it
-            ),
-          };
-        }
-        if (sel.kind === 'portal') {
-          return {
-            ...l,
-            portals: l.portals.map((it) =>
-              it.id === sel.id ? { ...it, x: it.x + dx, y: it.y + dy } : it
-            ),
-          };
-        }
-        if (sel.kind === 'room') {
-          return {
-            ...l,
-            rooms: l.rooms.map((it) =>
-              it.id === sel.id
+      const items =
+        s.selectedItems.length > 0
+          ? s.selectedItems
+          : s.selection
+            ? [s.selection]
+            : [];
+      if (items.length === 0) return s;
+
+      const idsByKind = {
+        object: new Set(items.filter((i) => i.kind === 'object').map((i) => i.id)),
+        light: new Set(items.filter((i) => i.kind === 'light').map((i) => i.id)),
+        portal: new Set(items.filter((i) => i.kind === 'portal').map((i) => i.id)),
+        room: new Set(items.filter((i) => i.kind === 'room').map((i) => i.id)),
+        wall: new Set(items.filter((i) => i.kind === 'wall').map((i) => i.id)),
+        path: new Set(items.filter((i) => i.kind === 'path').map((i) => i.id)),
+        roof: new Set(items.filter((i) => i.kind === 'roof').map((i) => i.id)),
+      };
+
+      const next = updateActiveLevel(s.doc, (l) => ({
+        ...l,
+        objects: idsByKind.object.size
+          ? l.objects.map((o) =>
+              idsByKind.object.has(o.id) ? { ...o, x: o.x + dx, y: o.y + dy } : o
+            )
+          : l.objects,
+        lights: idsByKind.light.size
+          ? l.lights.map((it) =>
+              idsByKind.light.has(it.id) ? { ...it, x: it.x + dx, y: it.y + dy } : it
+            )
+          : l.lights,
+        portals: idsByKind.portal.size
+          ? l.portals.map((it) =>
+              idsByKind.portal.has(it.id) ? { ...it, x: it.x + dx, y: it.y + dy } : it
+            )
+          : l.portals,
+        rooms: idsByKind.room.size
+          ? l.rooms.map((it) =>
+              idsByKind.room.has(it.id)
                 ? { ...it, points: it.points.map((p) => ({ x: p.x + dx, y: p.y + dy })) }
                 : it
-            ),
-          };
-        }
-        if (sel.kind === 'wall') {
-          return {
-            ...l,
-            walls: l.walls.map((it) =>
-              it.id === sel.id
+            )
+          : l.rooms,
+        walls: idsByKind.wall.size
+          ? l.walls.map((it) =>
+              idsByKind.wall.has(it.id)
                 ? { ...it, points: it.points.map((p) => ({ x: p.x + dx, y: p.y + dy })) }
                 : it
-            ),
-          };
-        }
-        if (sel.kind === 'path') {
-          return {
-            ...l,
-            paths: l.paths.map((it) =>
-              it.id === sel.id
+            )
+          : l.walls,
+        paths: idsByKind.path.size
+          ? l.paths.map((it) =>
+              idsByKind.path.has(it.id)
                 ? { ...it, points: it.points.map((p) => ({ x: p.x + dx, y: p.y + dy })) }
                 : it
-            ),
-          };
-        }
-        if (sel.kind === 'roof') {
-          return {
-            ...l,
-            roofs: l.roofs.map((it) =>
-              it.id === sel.id
+            )
+          : l.paths,
+        roofs: idsByKind.roof.size
+          ? l.roofs.map((it) =>
+              idsByKind.roof.has(it.id)
                 ? { ...it, points: it.points.map((p) => ({ x: p.x + dx, y: p.y + dy })) }
                 : it
-            ),
-          };
-        }
-        return l;
-      });
+            )
+          : l.roofs,
+      }));
       return recordUndo ? pushCommit(s, next) : { doc: next };
+    }),
+
+  copySelected: () => {
+    const s = get();
+    const items =
+      s.selectedItems.length > 0
+        ? s.selectedItems
+        : s.selection
+          ? [s.selection]
+          : [];
+    if (items.length === 0) return;
+    const level = s.doc.levels.find((l) => l.id === s.doc.activeLevelId);
+    if (!level) return;
+
+    const entries: ClipboardEntry[] = [];
+    for (const ref of items) {
+      if (ref.kind === 'object') {
+        const it = level.objects.find((o) => o.id === ref.id);
+        if (it) entries.push({ kind: 'object', data: structuredClone(it) });
+      } else if (ref.kind === 'light') {
+        const it = level.lights.find((o) => o.id === ref.id);
+        if (it) entries.push({ kind: 'light', data: structuredClone(it) });
+      } else if (ref.kind === 'portal') {
+        const it = level.portals.find((o) => o.id === ref.id);
+        if (it) entries.push({ kind: 'portal', data: structuredClone(it) });
+      } else if (ref.kind === 'room') {
+        const it = level.rooms.find((o) => o.id === ref.id);
+        if (it) entries.push({ kind: 'room', data: structuredClone(it) });
+      } else if (ref.kind === 'wall') {
+        const it = level.walls.find((o) => o.id === ref.id);
+        if (it) entries.push({ kind: 'wall', data: structuredClone(it) });
+      } else if (ref.kind === 'path') {
+        const it = level.paths.find((o) => o.id === ref.id);
+        if (it) entries.push({ kind: 'path', data: structuredClone(it) });
+      } else if (ref.kind === 'roof') {
+        const it = level.roofs.find((o) => o.id === ref.id);
+        if (it) entries.push({ kind: 'roof', data: structuredClone(it) });
+      }
+    }
+    if (entries.length > 0) {
+      set({ clipboard: entries, pasteCount: 0 });
+    }
+  },
+
+  pasteClipboard: (targetTile) =>
+    set((s) => {
+      if (s.clipboard.length === 0) return s;
+      const step = s.pasteCount + 1;
+
+      // Compute center of clipboard items so pasting at cursor preserves relative layout
+      let sumX = 0;
+      let sumY = 0;
+      let count = 0;
+      for (const entry of s.clipboard) {
+        if (entry.kind === 'object' || entry.kind === 'light' || entry.kind === 'portal') {
+          sumX += entry.data.x;
+          sumY += entry.data.y;
+          count += 1;
+        } else {
+          for (const p of entry.data.points) {
+            sumX += p.x;
+            sumY += p.y;
+            count += 1;
+          }
+        }
+      }
+      const cx = count > 0 ? sumX / count : 0;
+      const cy = count > 0 ? sumY / count : 0;
+      const dx = targetTile ? targetTile.x - cx : 0.7 * step;
+      const dy = targetTile ? targetTile.y - cy : 0.7 * step;
+
+      const newRefs: SelectionRef[] = [];
+      const newObjects: MapObject[] = [];
+      const newLights: LightSource[] = [];
+      const newPortals: PortalItem[] = [];
+      const newRooms: RoomShape[] = [];
+      const newWalls: WallPolyline[] = [];
+      const newPaths: PathItem[] = [];
+      const newRoofs: RoofShape[] = [];
+
+      for (const entry of s.clipboard) {
+        if (entry.kind === 'object') {
+          const id = uid('obj');
+          newObjects.push({
+            ...structuredClone(entry.data),
+            id,
+            x: entry.data.x + dx,
+            y: entry.data.y + dy,
+          });
+          newRefs.push({ kind: 'object', id });
+        } else if (entry.kind === 'light') {
+          const id = uid('l');
+          newLights.push({
+            ...structuredClone(entry.data),
+            id,
+            x: entry.data.x + dx,
+            y: entry.data.y + dy,
+          });
+          newRefs.push({ kind: 'light', id });
+        } else if (entry.kind === 'portal') {
+          const id = uid('p');
+          newPortals.push({
+            ...structuredClone(entry.data),
+            id,
+            x: entry.data.x + dx,
+            y: entry.data.y + dy,
+          });
+          newRefs.push({ kind: 'portal', id });
+        } else if (entry.kind === 'room') {
+          const id = uid('room');
+          newRooms.push({
+            ...structuredClone(entry.data),
+            id,
+            points: entry.data.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+          });
+          newRefs.push({ kind: 'room', id });
+        } else if (entry.kind === 'wall') {
+          const id = uid('w');
+          newWalls.push({
+            ...structuredClone(entry.data),
+            id,
+            points: entry.data.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+          });
+          newRefs.push({ kind: 'wall', id });
+        } else if (entry.kind === 'path') {
+          const id = uid('path');
+          newPaths.push({
+            ...structuredClone(entry.data),
+            id,
+            points: entry.data.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+          });
+          newRefs.push({ kind: 'path', id });
+        } else if (entry.kind === 'roof') {
+          const id = uid('roof');
+          newRoofs.push({
+            ...structuredClone(entry.data),
+            id,
+            points: entry.data.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+          });
+          newRefs.push({ kind: 'roof', id });
+        }
+      }
+
+      const nextDoc = updateActiveLevel(s.doc, (l) => ({
+        ...l,
+        objects: [...l.objects, ...newObjects],
+        lights: [...l.lights, ...newLights],
+        portals: [...l.portals, ...newPortals],
+        rooms: [...l.rooms, ...newRooms],
+        walls: [...l.walls, ...newWalls],
+        paths: [...l.paths, ...newPaths],
+        roofs: [...l.roofs, ...newRoofs],
+      }));
+
+      return {
+        ...pushCommit(s, nextDoc),
+        selectedItems: newRefs,
+        selection: newRefs.length > 0 ? newRefs[newRefs.length - 1] : null,
+        pasteCount: step,
+      };
     }),
 
   duplicateSelected: () => {
     const s = get();
-    const sel = s.selection;
-    if (!sel) return;
-    const level = s.doc.levels.find((l) => l.id === s.doc.activeLevelId);
-    if (!level) return;
-
-    if (sel.kind === 'object') {
-      const orig = level.objects.find((o) => o.id === sel.id);
-      if (!orig) return;
-      const copy: MapObject = { ...orig, id: uid('obj'), x: orig.x + 0.6, y: orig.y + 0.6 };
-      s.addObject(copy);
-      set({ selection: { kind: 'object', id: copy.id } });
-    } else if (sel.kind === 'light') {
-      const orig = level.lights.find((o) => o.id === sel.id);
-      if (!orig) return;
-      const copy: LightSource = { ...orig, id: uid('l'), x: orig.x + 0.6, y: orig.y + 0.6 };
-      s.addLight(copy);
-      set({ selection: { kind: 'light', id: copy.id } });
-    }
+    s.copySelected();
+    get().pasteClipboard(null);
   },
 
   deleteSelected: () =>
     set((s) => {
-      const sel = s.selection;
-      if (!sel) return s;
-      const next = updateActiveLevel(s.doc, (l) => {
-        switch (sel.kind) {
-          case 'object':
-            return { ...l, objects: l.objects.filter((it) => it.id !== sel.id) };
-          case 'light':
-            return { ...l, lights: l.lights.filter((it) => it.id !== sel.id) };
-          case 'portal':
-            return { ...l, portals: l.portals.filter((it) => it.id !== sel.id) };
-          case 'room':
-            return { ...l, rooms: l.rooms.filter((it) => it.id !== sel.id) };
-          case 'wall':
-            return { ...l, walls: l.walls.filter((it) => it.id !== sel.id) };
-          case 'path':
-            return { ...l, paths: l.paths.filter((it) => it.id !== sel.id) };
-          case 'roof':
-            return { ...l, roofs: l.roofs.filter((it) => it.id !== sel.id) };
-        }
-      });
-      return { ...pushCommit(s, next), selection: null };
+      const items =
+        s.selectedItems.length > 0
+          ? s.selectedItems
+          : s.selection
+            ? [s.selection]
+            : [];
+      if (items.length === 0) return s;
+
+      const idsByKind = {
+        object: new Set(items.filter((i) => i.kind === 'object').map((i) => i.id)),
+        light: new Set(items.filter((i) => i.kind === 'light').map((i) => i.id)),
+        portal: new Set(items.filter((i) => i.kind === 'portal').map((i) => i.id)),
+        room: new Set(items.filter((i) => i.kind === 'room').map((i) => i.id)),
+        wall: new Set(items.filter((i) => i.kind === 'wall').map((i) => i.id)),
+        path: new Set(items.filter((i) => i.kind === 'path').map((i) => i.id)),
+        roof: new Set(items.filter((i) => i.kind === 'roof').map((i) => i.id)),
+      };
+
+      const next = updateActiveLevel(s.doc, (l) => ({
+        ...l,
+        objects: l.objects.filter((it) => !idsByKind.object.has(it.id)),
+        lights: l.lights.filter((it) => !idsByKind.light.has(it.id)),
+        portals: l.portals.filter((it) => !idsByKind.portal.has(it.id)),
+        rooms: l.rooms.filter((it) => !idsByKind.room.has(it.id)),
+        walls: l.walls.filter((it) => !idsByKind.wall.has(it.id)),
+        paths: l.paths.filter((it) => !idsByKind.path.has(it.id)),
+        roofs: l.roofs.filter((it) => !idsByKind.roof.has(it.id)),
+      }));
+      return { ...pushCommit(s, next), selection: null, selectedItems: [] };
     }),
 }));
 
