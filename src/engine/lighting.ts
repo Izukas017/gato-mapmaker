@@ -38,7 +38,9 @@ export function extractOccluderSegments(level: MapLevel): Segment[] {
   }
 
   // Filter portals that pass light
-  const openings = level.portals.filter((p) => !p.blocksLight || p.open);
+  const openings = level.portals.filter(
+    (p) => !p.blocksLight || p.open || (p.openAngle ?? 0) > 5
+  );
   if (openings.length === 0) return raw;
 
   let segments = raw;

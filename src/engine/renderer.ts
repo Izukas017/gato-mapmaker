@@ -696,17 +696,44 @@ function drawPortals(
       ctx.fillRect(-w / 2 - 2, -h * 0.72, 6, h * 1.44);
       ctx.fillRect(w / 2 - 4, -h * 0.72, 6, h * 1.44);
 
-      if (p.open) {
-        // Swung open door leaf
-        ctx.save();
-        ctx.translate(-w / 2 + 2, 0);
-        ctx.rotate(-Math.PI * 0.42);
-        ctx.fillStyle = color;
-        ctx.strokeStyle = trim;
-        ctx.lineWidth = 2;
-        ctx.fillRect(0, -h * 0.25, w * 0.88, h * 0.5);
-        ctx.strokeRect(0, -h * 0.25, w * 0.88, h * 0.5);
-        ctx.restore();
+      const swingDeg = p.openAngle ?? (p.open ? 75 : 0);
+      const swingRad = (swingDeg * Math.PI) / 180;
+
+      if (swingDeg > 1) {
+        if (p.kind === 'door_double') {
+          const leafW = (w - 4) * 0.48;
+          // Left leaf
+          ctx.save();
+          ctx.translate(-w / 2 + 2, 0);
+          ctx.rotate(-swingRad);
+          ctx.fillStyle = color;
+          ctx.strokeStyle = trim;
+          ctx.lineWidth = 2;
+          ctx.fillRect(0, -h * 0.25, leafW, h * 0.5);
+          ctx.strokeRect(0, -h * 0.25, leafW, h * 0.5);
+          ctx.restore();
+          // Right leaf
+          ctx.save();
+          ctx.translate(w / 2 - 2, 0);
+          ctx.rotate(swingRad);
+          ctx.fillStyle = color;
+          ctx.strokeStyle = trim;
+          ctx.lineWidth = 2;
+          ctx.fillRect(-leafW, -h * 0.25, leafW, h * 0.5);
+          ctx.strokeRect(-leafW, -h * 0.25, leafW, h * 0.5);
+          ctx.restore();
+        } else {
+          // Single swung door leaf
+          ctx.save();
+          ctx.translate(-w / 2 + 2, 0);
+          ctx.rotate(-swingRad);
+          ctx.fillStyle = color;
+          ctx.strokeStyle = trim;
+          ctx.lineWidth = 2;
+          ctx.fillRect(0, -h * 0.25, w * 0.88, h * 0.5);
+          ctx.strokeRect(0, -h * 0.25, w * 0.88, h * 0.5);
+          ctx.restore();
+        }
       } else {
         ctx.fillStyle = color;
         ctx.strokeStyle = trim;

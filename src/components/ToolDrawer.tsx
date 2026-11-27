@@ -23,6 +23,7 @@ import {
 } from '../engine/textures';
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
+import { NumberSliderRow } from './NumberSliderRow';
 import type {
   BrushShape,
   PathStyleId,
@@ -616,18 +617,15 @@ export function ToolDrawer() {
                 ))}
               </div>
             </div>
-            <div className="control-row">
-              <span>Ancho</span>
-              <input
-                type="range"
-                min={0.6}
-                max={2.4}
-                step={0.1}
-                value={ts.portalWidth}
-                onChange={(e) => updateTs({ portalWidth: parseFloat(e.target.value) })}
-              />
-              <span className="control-val">{ts.portalWidth.toFixed(1)}</span>
-            </div>
+            <NumberSliderRow
+              label="Ancho"
+              value={ts.portalWidth}
+              min={0.6}
+              max={3.0}
+              step={0.1}
+              decimals={1}
+              onChange={(v) => updateTs({ portalWidth: v })}
+            />
             <button
               className={`toggle-btn ${ts.portalOpen ? 'active' : ''}`}
               onClick={() => updateTs({ portalOpen: !ts.portalOpen })}
@@ -635,6 +633,18 @@ export function ToolDrawer() {
               <span>Puerta Abierta (pasa luz)</span>
               <span>{ts.portalOpen ? 'SÍ' : 'NO'}</span>
             </button>
+            {ts.portalOpen && (
+              <NumberSliderRow
+                label="Apertura"
+                value={ts.portalOpenAngle}
+                min={5}
+                max={180}
+                step={5}
+                decimals={0}
+                suffix="°"
+                onChange={(v) => updateTs({ portalOpenAngle: Math.max(5, Math.min(180, v)) })}
+              />
+            )}
           </>
         )}
 

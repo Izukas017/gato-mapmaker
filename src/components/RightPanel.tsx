@@ -16,9 +16,11 @@ import {
   Sun,
   Trash2,
 } from 'lucide-react';
+import { getPropDefinition } from '../engine/props';
 import { FLOOR_PATTERNS, ROOF_STYLES, WALL_STYLES } from '../engine/textures';
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
+import { NumberSliderRow } from './NumberSliderRow';
 import type {
   FloorPatternId,
   LayerVisibility,
@@ -282,26 +284,27 @@ export function RightPanel() {
               </div>
             </div>
 
-            {selectedObject && (
+            {selectedObject && (() => {
+              const propDef = getPropDefinition(selectedObject.propId, doc.customAssets);
+              const baseW = propDef?.widthTiles ?? 1;
+              const baseH = propDef?.heightTiles ?? 1;
+              const curW = baseW * Math.abs(selectedObject.scaleX);
+              const curH = baseH * Math.abs(selectedObject.scaleY);
+
+              return (
               <>
-                <div className="control-row">
-                  <span>Rotación</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={359}
-                    value={Math.round(((selectedObject.rotation * 180) / Math.PI + 360) % 360)}
-                    onChange={(e) =>
-                      updateSelectedObject(
-                        { rotation: (parseInt(e.target.value, 10) * Math.PI) / 180 },
-                        false
-                      )
-                    }
-                  />
-                  <span className="control-val">
-                    {Math.round(((selectedObject.rotation * 180) / Math.PI + 360) % 360)}°
-                  </span>
-                </div>
+                <NumberSliderRow
+                  label="Rotación"
+                  value={Math.round(((selectedObject.rotation * 180) / Math.PI + 360) % 360)}
+                  min={0}
+                  max={359}
+                  step={1}
+                  decimals={0}
+                  suffix="°"
+                  onChange={(deg) =>
+                    updateSelectedObject({ rotation: (deg * Math.PI) / 180 }, false)
+                  }
+                />
 
                 <button
                   className={`toggle-btn ${uniformScale ? 'active' : ''}`}
@@ -311,83 +314,74 @@ export function RightPanel() {
                   <span>{uniformScale ? 'SÍ' : 'NO'}</span>
                 </button>
 
-                {uniformScale ? (
-                  <div className="control-row">
-                    <span>Tamaño</span>
-                    <input
-                      type="range"
-                      min={0.25}
-                      max={3.5}
-                      step={0.05}
-                      value={Math.abs(selectedObject.scaleX)}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        updateSelectedObject(
-                          {
-                            scaleX: selectedObject.scaleX < 0 ? -v : v,
-                            scaleY: selectedObject.scaleY < 0 ? -v : v,
-                          },
-                          false
-                        );
-                      }}
-                    />
-                    <span className="control-val">{Math.abs(selectedObject.scaleX).toFixed(2)}x</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="control-row">
-                      <span>Ancho (X)</span>
-                      <input
-                        type="range"
-                        min={0.25}
-                        max={3.5}
-                        step={0.05}
-                        value={Math.abs(selectedObject.scaleX)}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          updateSelectedObject(
-                            { scaleX: selectedObject.scaleX < 0 ? -v : v },
-                            false
-                          );
-                        }}
-                      />
-                      <span className="control-val">{Math.abs(selectedObject.scaleX).toFixed(2)}x</span>
-                    </div>
-                    <div className="control-row">
-                      <span>Alto (Y)</span>
-                      <input
-                        type="range"
-                        min={0.25}
-                        max={3.5}
-                        step={0.05}
-                        value={Math.abs(selectedObject.scaleY)}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          updateSelectedObject(
-                            { scaleY: selectedObject.scaleY < 0 ? -v : v },
-                            false
-                          );
-                        }}
-                      />
-                      <span className="control-val">{Math.abs(selectedObject.scaleY).toFixed(2)}x</span>
-                    </div>
-                  </>
-                )}
-
-                <div className="control-row">
-                  <span>Opacidad</span>
-                  <input
-                    type="range"
-                    min={0.1}
-                    max={1}
-                    step={0.05}
-                    value={selectedObject.opacity}
-                    onChange={(e) =>
-                      updateSelectedObject({ opacity: parseFloat(e.target.value) }, false)
+                <NumberSliderRow
+                  label="Ancho"
+                  value={curW}
+                  min={0.2}
+                  max={15}
+                  step={0.1}
+                  decimals={2}
+                  onChange={(newW) => {
+                    const nextScaleX = Math.max(0.1, newW / baseW);
+                    if (uniformScale) {
+                      const ratio = nextScaleX / Math.max(0.01, Math.abs(selectedObject.scaleX));
+                      const nextScaleY = Math.max(0.1, Math.abs(selectedObject.scaleY) * ratio);
+                      updateSelectedObject(
+                        {
+                          scaleX: selectedObject.scaleX < 0 ? -nextScaleX : nextScaleX,
+                          scaleY: selectedObject.scaleY < 0 ? -nextScaleY : nextScaleY,
+                        },
+                        false
+                      );
+                    } else {
+                      updateSelectedObject(
+                        { scaleX: selectedObject.scaleX < 0 ? -nextScaleX : nextScaleX },
+                        false
+                      );
                     }
-                  />
-                  <span className="control-val">{Math.round(selectedObject.opacity * 100)}%</span>
-                </div>
+                  }}
+                />
+
+                <NumberSliderRow
+                  label="Largo"
+                  value={curH}
+                  min={0.2}
+                  max={15}
+                  step={0.1}
+                  decimals={2}
+                  onChange={(newH) => {
+                    const nextScaleY = Math.max(0.1, newH / baseH);
+                    if (uniformScale) {
+                      const ratio = nextScaleY / Math.max(0.01, Math.abs(selectedObject.scaleY));
+                      const nextScaleX = Math.max(0.1, Math.abs(selectedObject.scaleX) * ratio);
+                      updateSelectedObject(
+                        {
+                          scaleX: selectedObject.scaleX < 0 ? -nextScaleX : nextScaleX,
+                          scaleY: selectedObject.scaleY < 0 ? -nextScaleY : nextScaleY,
+                        },
+                        false
+                      );
+                    } else {
+                      updateSelectedObject(
+                        { scaleY: selectedObject.scaleY < 0 ? -nextScaleY : nextScaleY },
+                        false
+                      );
+                    }
+                  }}
+                />
+
+                <NumberSliderRow
+                  label="Opacidad"
+                  value={Math.round(selectedObject.opacity * 100)}
+                  min={10}
+                  max={100}
+                  step={5}
+                  decimals={0}
+                  suffix="%"
+                  onChange={(pct) =>
+                    updateSelectedObject({ opacity: Math.min(1, Math.max(0.1, pct / 100)) }, false)
+                  }
+                />
 
                 <div className="control-row">
                   <span>Tinte</span>
@@ -587,8 +581,8 @@ export function RightPanel() {
                   </div>
                 )}
               </>
-            )}
-
+              );
+            })()}
             {selectedLight && (
               <>
                 <div className="control-row">
@@ -599,34 +593,25 @@ export function RightPanel() {
                     onChange={(e) => updateSelectedLight({ color: e.target.value }, false)}
                   />
                 </div>
-                <div className="control-row">
-                  <span>Radio</span>
-                  <input
-                    type="range"
-                    min={1.5}
-                    max={14}
-                    step={0.5}
-                    value={selectedLight.radius}
-                    onChange={(e) =>
-                      updateSelectedLight({ radius: parseFloat(e.target.value) }, false)
-                    }
-                  />
-                  <span className="control-val">{selectedLight.radius.toFixed(1)}</span>
-                </div>
-                <div className="control-row">
-                  <span>Intensidad</span>
-                  <input
-                    type="range"
-                    min={0.2}
-                    max={1.8}
-                    step={0.05}
-                    value={selectedLight.intensity}
-                    onChange={(e) =>
-                      updateSelectedLight({ intensity: parseFloat(e.target.value) }, false)
-                    }
-                  />
-                  <span className="control-val">{Math.round(selectedLight.intensity * 100)}%</span>
-                </div>
+                <NumberSliderRow
+                  label="Radio"
+                  value={selectedLight.radius}
+                  min={1.5}
+                  max={14}
+                  step={0.5}
+                  decimals={1}
+                  onChange={(v) => updateSelectedLight({ radius: v }, false)}
+                />
+                <NumberSliderRow
+                  label="Intensidad"
+                  value={Math.round(selectedLight.intensity * 100)}
+                  min={20}
+                  max={180}
+                  step={5}
+                  decimals={0}
+                  suffix="%"
+                  onChange={(pct) => updateSelectedLight({ intensity: pct / 100 }, false)}
+                />
                 <button
                   className={`toggle-btn ${selectedLight.castShadows ? 'active' : ''}`}
                   onClick={() =>
@@ -639,7 +624,16 @@ export function RightPanel() {
               </>
             )}
 
-            {selectedPortal && (
+            {selectedPortal && (() => {
+              const isDoor =
+                selectedPortal.kind === 'door_wood' ||
+                selectedPortal.kind === 'door_double' ||
+                selectedPortal.kind === 'door_iron' ||
+                selectedPortal.kind === 'door_ornate_gold' ||
+                selectedPortal.kind === 'door_secret';
+              const curOpenAngle = selectedPortal.openAngle ?? (selectedPortal.open ? 75 : 0);
+
+              return (
               <>
                 <div className="control-row">
                   <span>Tipo</span>
@@ -658,16 +652,40 @@ export function RightPanel() {
                 </div>
                 <button
                   className={`toggle-btn ${selectedPortal.open ? 'active' : ''}`}
-                  onClick={() =>
+                  onClick={() => {
+                    const nextOpen = !selectedPortal.open;
                     updateSelectedPortal({
-                      open: !selectedPortal.open,
-                      blocksLight: selectedPortal.open,
-                    })
-                  }
+                      open: nextOpen,
+                      openAngle: nextOpen ? (curOpenAngle > 5 ? curOpenAngle : 75) : 0,
+                      blocksLight: !nextOpen && isDoor,
+                    });
+                  }}
                 >
                   <span>Puerta Abierta</span>
                   <span>{selectedPortal.open ? 'SÍ' : 'NO'}</span>
                 </button>
+                {isDoor && (
+                  <NumberSliderRow
+                    label="Apertura"
+                    value={curOpenAngle}
+                    min={0}
+                    max={180}
+                    step={5}
+                    decimals={0}
+                    suffix="°"
+                    onChange={(deg) => {
+                      const clamped = Math.max(0, Math.min(180, deg));
+                      updateSelectedPortal(
+                        {
+                          openAngle: clamped,
+                          open: clamped > 2,
+                          blocksLight: clamped <= 2,
+                        },
+                        false
+                      );
+                    }}
+                  />
+                )}
                 <button
                   className={`toggle-btn ${selectedPortal.blocksLight ? 'active' : ''}`}
                   onClick={() =>
@@ -677,40 +695,30 @@ export function RightPanel() {
                   <span>Bloquea Luz</span>
                   <span>{selectedPortal.blocksLight ? 'SÍ' : 'NO'}</span>
                 </button>
-                <div className="control-row">
-                  <span>Ancho</span>
-                  <input
-                    type="range"
-                    min={0.6}
-                    max={2.4}
-                    step={0.1}
-                    value={selectedPortal.width}
-                    onChange={(e) =>
-                      updateSelectedPortal({ width: parseFloat(e.target.value) }, false)
-                    }
-                  />
-                  <span className="control-val">{selectedPortal.width.toFixed(1)}</span>
-                </div>
-                <div className="control-row">
-                  <span>Rotación</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={359}
-                    value={Math.round(((selectedPortal.angle * 180) / Math.PI + 360) % 360)}
-                    onChange={(e) =>
-                      updateSelectedPortal(
-                        { angle: (parseInt(e.target.value, 10) * Math.PI) / 180 },
-                        false
-                      )
-                    }
-                  />
-                  <span className="control-val">
-                    {Math.round(((selectedPortal.angle * 180) / Math.PI + 360) % 360)}°
-                  </span>
-                </div>
+                <NumberSliderRow
+                  label="Ancho"
+                  value={selectedPortal.width}
+                  min={0.6}
+                  max={3.0}
+                  step={0.1}
+                  decimals={1}
+                  onChange={(v) => updateSelectedPortal({ width: v }, false)}
+                />
+                <NumberSliderRow
+                  label="Rotación"
+                  value={Math.round(((selectedPortal.angle * 180) / Math.PI + 360) % 360)}
+                  min={0}
+                  max={359}
+                  step={1}
+                  decimals={0}
+                  suffix="°"
+                  onChange={(deg) =>
+                    updateSelectedPortal({ angle: (deg * Math.PI) / 180 }, false)
+                  }
+                />
               </>
-            )}
+              );
+            })()}
 
             {selectedRoom && (
               <>
@@ -729,23 +737,16 @@ export function RightPanel() {
                     ))}
                   </select>
                 </div>
-                <div className="control-row">
-                  <span>Rotar suelo</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={345}
-                    step={15}
-                    value={selectedRoom.floorRotation ?? 0}
-                    onChange={(e) =>
-                      updateSelectedRoom(
-                        { floorRotation: parseInt(e.target.value, 10) },
-                        false
-                      )
-                    }
-                  />
-                  <span className="control-val">{selectedRoom.floorRotation ?? 0}°</span>
-                </div>
+                <NumberSliderRow
+                  label="Rotar suelo"
+                  value={selectedRoom.floorRotation ?? 0}
+                  min={0}
+                  max={359}
+                  step={5}
+                  decimals={0}
+                  suffix="°"
+                  onChange={(deg) => updateSelectedRoom({ floorRotation: deg }, false)}
+                />
                 <div className="control-row">
                   <span>Tinte suelo</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -787,23 +788,15 @@ export function RightPanel() {
                 </div>
                 {selectedRoom.wallStyle && (
                   <>
-                    <div className="control-row">
-                      <span>Grosor</span>
-                      <input
-                        type="range"
-                        min={0.1}
-                        max={0.6}
-                        step={0.02}
-                        value={selectedRoom.wallThickness}
-                        onChange={(e) =>
-                          updateSelectedRoom(
-                            { wallThickness: parseFloat(e.target.value) },
-                            false
-                          )
-                        }
-                      />
-                      <span className="control-val">{selectedRoom.wallThickness.toFixed(2)}</span>
-                    </div>
+                    <NumberSliderRow
+                      label="Grosor"
+                      value={selectedRoom.wallThickness}
+                      min={0.1}
+                      max={0.6}
+                      step={0.02}
+                      decimals={2}
+                      onChange={(v) => updateSelectedRoom({ wallThickness: v }, false)}
+                    />
                     <button
                       className={`toggle-btn ${selectedRoom.castShadows ? 'active' : ''}`}
                       onClick={() =>
@@ -835,23 +828,15 @@ export function RightPanel() {
                     ))}
                   </select>
                 </div>
-                <div className="control-row">
-                  <span>Grosor</span>
-                  <input
-                    type="range"
-                    min={0.1}
-                    max={0.6}
-                    step={0.02}
-                    value={selectedWall.thickness}
-                    onChange={(e) =>
-                      updateSelectedWall(
-                        { thickness: parseFloat(e.target.value) },
-                        false
-                      )
-                    }
-                  />
-                  <span className="control-val">{selectedWall.thickness.toFixed(2)}</span>
-                </div>
+                <NumberSliderRow
+                  label="Grosor"
+                  value={selectedWall.thickness}
+                  min={0.1}
+                  max={0.6}
+                  step={0.02}
+                  decimals={2}
+                  onChange={(v) => updateSelectedWall({ thickness: v }, false)}
+                />
                 <button
                   className={`toggle-btn ${selectedWall.closed ? 'active' : ''}`}
                   onClick={() => updateSelectedWall({ closed: !selectedWall.closed })}
@@ -888,20 +873,15 @@ export function RightPanel() {
                     ))}
                   </select>
                 </div>
-                <div className="control-row">
-                  <span>Ancho</span>
-                  <input
-                    type="range"
-                    min={0.3}
-                    max={4.0}
-                    step={0.1}
-                    value={selectedPath.width}
-                    onChange={(e) =>
-                      updateSelectedPath({ width: parseFloat(e.target.value) }, false)
-                    }
-                  />
-                  <span className="control-val">{selectedPath.width.toFixed(1)}</span>
-                </div>
+                <NumberSliderRow
+                  label="Ancho"
+                  value={selectedPath.width}
+                  min={0.3}
+                  max={4.0}
+                  step={0.1}
+                  decimals={1}
+                  onChange={(v) => updateSelectedPath({ width: v }, false)}
+                />
                 <button
                   className={`toggle-btn ${selectedPath.smooth ? 'active' : ''}`}
                   onClick={() => updateSelectedPath({ smooth: !selectedPath.smooth })}
@@ -938,20 +918,18 @@ export function RightPanel() {
                     ))}
                   </select>
                 </div>
-                <div className="control-row">
-                  <span>Opacidad</span>
-                  <input
-                    type="range"
-                    min={0.15}
-                    max={1}
-                    step={0.05}
-                    value={selectedRoof.opacity}
-                    onChange={(e) =>
-                      updateSelectedRoof({ opacity: parseFloat(e.target.value) }, false)
-                    }
-                  />
-                  <span className="control-val">{Math.round(selectedRoof.opacity * 100)}%</span>
-                </div>
+                <NumberSliderRow
+                  label="Opacidad"
+                  value={Math.round(selectedRoof.opacity * 100)}
+                  min={15}
+                  max={100}
+                  step={5}
+                  decimals={0}
+                  suffix="%"
+                  onChange={(pct) =>
+                    updateSelectedRoof({ opacity: Math.min(1, Math.max(0.15, pct / 100)) }, false)
+                  }
+                />
               </>
             )}
           </div>

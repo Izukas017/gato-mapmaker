@@ -64,6 +64,7 @@ export interface ToolSettings {
   portalKind: PortalKind;
   portalWidth: number;
   portalOpen: boolean;
+  portalOpenAngle: number;
   // Path
   pathStyle: PathStyleId;
   pathWidth: number;
@@ -268,6 +269,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     portalKind: 'door_wood',
     portalWidth: 1.1,
     portalOpen: false,
+    portalOpenAngle: 75,
     pathStyle: 'dirt_road',
     pathWidth: 1.4,
     pathSmooth: true,

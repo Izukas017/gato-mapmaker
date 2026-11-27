@@ -165,6 +165,7 @@ export interface PortalItem {
   width: number; // in tiles
   kind: PortalKind;
   open: boolean;
+  openAngle?: number; // degrees (0..180)
   blocksLight: boolean;
 }
 

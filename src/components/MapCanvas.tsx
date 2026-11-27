@@ -737,6 +737,7 @@ export function MapCanvas() {
         width: toolSettings.portalWidth,
         kind: toolSettings.portalKind,
         open: toolSettings.portalOpen,
+        openAngle: toolSettings.portalOpen ? toolSettings.portalOpenAngle : 0,
         blocksLight: blocksLight && !toolSettings.portalOpen,
       });
       return;
