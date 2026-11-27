@@ -224,10 +224,10 @@ export function TopBar({
         <button
           className={`topbar-btn ${doc.grid.snap ? 'active' : ''}`}
           onClick={() => updateGrid({ snap: !doc.grid.snap })}
-          title="Ajustar a la cuadrícula"
+          title="Seguir o no seguir la cuadrícula (S)"
         >
           <Magnet size={14} />
-          Imán
+          Seguir Grilla
         </button>
 
         <button

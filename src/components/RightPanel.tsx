@@ -1043,6 +1043,30 @@ export function RightPanel() {
               />
               <span className="control-val">{Math.round(doc.grid.opacity * 100)}%</span>
             </div>
+            <button
+              className={`toggle-btn ${doc.grid.snap ? 'active' : ''}`}
+              onClick={() => updateGrid({ snap: !doc.grid.snap })}
+            >
+              <span>Seguir cuadrícula</span>
+              <span>{doc.grid.snap ? 'SÍ' : 'NO'}</span>
+            </button>
+            {doc.grid.snap && (
+              <div className="control-row">
+                <span>Subdivisión</span>
+                <select
+                  value={doc.grid.snapSubdivision}
+                  onChange={(e) =>
+                    updateGrid({
+                      snapSubdivision: parseInt(e.target.value, 10) as 1 | 2 | 4,
+                    })
+                  }
+                >
+                  <option value={1}>1 casilla</option>
+                  <option value={2}>1/2 casilla</option>
+                  <option value={4}>1/4 casilla</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
 

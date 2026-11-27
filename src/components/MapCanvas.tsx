@@ -207,6 +207,11 @@ export function MapCanvas() {
         r: 'roof',
       };
       const lower = e.key.toLowerCase();
+      if (!e.ctrlKey && !e.altKey && !e.metaKey && lower === 's') {
+        const st = useMapStore.getState();
+        st.updateGrid({ snap: !st.doc.grid.snap });
+        return;
+      }
       if (!e.ctrlKey && !e.altKey && !e.metaKey && toolMap[lower]) {
         useMapStore.getState().setTool(toolMap[lower]);
       }

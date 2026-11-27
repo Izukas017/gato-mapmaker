@@ -339,6 +339,15 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
             Cuadrícula del Mapa Actual
           </div>
 
+          <button
+            type="button"
+            className={`toggle-btn ${doc.grid.snap ? 'active' : ''}`}
+            onClick={() => updateGrid({ snap: !doc.grid.snap })}
+          >
+            <span>Seguir cuadrícula al dibujar y mover</span>
+            <span>{doc.grid.snap ? 'SÍ' : 'NO'}</span>
+          </button>
+
           <div className="control-row">
             <span>Tipo de cuadrícula</span>
             <select

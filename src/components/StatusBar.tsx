@@ -25,20 +25,33 @@ export function StatusBar() {
       </div>
 
       <div className="statusbar-group">
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span>Ajuste:</span>
-          <select
-            value={doc.grid.snapSubdivision}
-            onChange={(e) =>
-              updateGrid({ snapSubdivision: parseInt(e.target.value, 10) as 1 | 2 | 4 })
-            }
-            style={{ padding: '1px 4px', fontSize: 11 }}
-          >
-            <option value={1}>1 casilla</option>
-            <option value={2}>1/2 casilla</option>
-            <option value={4}>1/4 casilla</option>
-          </select>
-        </label>
+        <button
+          onClick={() => updateGrid({ snap: !doc.grid.snap })}
+          style={{
+            color: doc.grid.snap ? 'var(--accent-hover)' : 'var(--text-muted)',
+            fontSize: 11,
+            fontFamily: 'inherit',
+          }}
+          title="Seguir o no seguir la cuadrícula (S)"
+        >
+          Seguir cuadrícula: <b>{doc.grid.snap ? 'SÍ' : 'NO'}</b>
+        </button>
+        {doc.grid.snap && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span>Ajuste:</span>
+            <select
+              value={doc.grid.snapSubdivision}
+              onChange={(e) =>
+                updateGrid({ snapSubdivision: parseInt(e.target.value, 10) as 1 | 2 | 4 })
+              }
+              style={{ padding: '1px 4px', fontSize: 11 }}
+            >
+              <option value={1}>1 casilla</option>
+              <option value={2}>1/2 casilla</option>
+              <option value={4}>1/4 casilla</option>
+            </select>
+          </label>
+        )}
         <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <span>Grilla:</span>
           <select
