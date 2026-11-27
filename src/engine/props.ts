@@ -1,4 +1,5 @@
 import { drawAnimal, EXTRA_ANIMALS } from './animals';
+import { finishSprite } from './finish';
 import type { CustomAsset, PropCategory, PropDefinition } from '../types/map';
 
 export const PROP_CATEGORIES: { id: PropCategory; label: string }[] = [
@@ -383,8 +384,20 @@ function renderPropSprite(def: PropDefinition): HTMLCanvasElement {
   const cx = w / 2;
   const cy = h / 2;
 
-  if (drawAnimal(ctx, def.id, w, h)) return canvas;
+  // Fur and feathers get the same finish as the objects.
+  if (!drawAnimal(ctx, def.id, w, h)) drawObject(ctx, def, w, h, cx, cy);
+  if (def.id !== 'blood_pool') finishSprite(ctx, w, h);
+  return canvas;
+}
 
+function drawObject(
+  ctx: CanvasRenderingContext2D,
+  def: PropDefinition,
+  w: number,
+  h: number,
+  cx: number,
+  cy: number
+) {
   switch (def.id) {
     case 'bed_teal':
     case 'bed_crimson':
@@ -4244,7 +4257,6 @@ function renderPropSprite(def: PropDefinition): HTMLCanvasElement {
     }
   }
 
-  return canvas;
 }
 
 export function getPropSprite(propId: string): HTMLCanvasElement | null {

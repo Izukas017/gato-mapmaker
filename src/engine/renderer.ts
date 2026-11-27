@@ -30,7 +30,8 @@ import {
   getPropDefinition,
   getPropSprite,
 } from './props';
-import { getRoadPattern, getTexturePattern, getWallColors } from './textures';
+import { drawPortals, drawWallStroke } from './structures';
+import { getRipplePattern, getRoadPattern, getTexturePattern } from './textures';
 
 export interface RenderOptions {
   ppg: number; // pixels per grid tile
@@ -89,6 +90,9 @@ function tracePolygon(ctx: CanvasRenderingContext2D, points: Point[], ppg: numbe
   }
   ctx.closePath();
 }
+
+const frac = (v: number) => v - Math.floor(v);
+const pick = <T,>(r: number, list: T[]): T => list[Math.floor(frac(r) * list.length)];
 
 function tracePolyline(
   ctx: CanvasRenderingContext2D,
@@ -360,6 +364,36 @@ function drawWater(
     (s) => s.deepColor,
     (s) => Boolean(s.erase) || s.deep === false
   );
+  drawRipples(ctx, wc, allStrokes, ppg);
+}
+
+// Light caustics laid only where there is water.
+function drawRipples(
+  ctx: CanvasRenderingContext2D,
+  wc: HTMLCanvasElement,
+  strokes: WaterStroke[],
+  ppg: number
+) {
+  const wctx = wc.getContext('2d')!;
+  wctx.clearRect(0, 0, wc.width, wc.height);
+  for (const s of strokes) {
+    if (s.points.length === 0) continue;
+    wctx.save();
+    wctx.globalCompositeOperation = s.erase ? 'destination-out' : 'source-over';
+    wctx.lineCap = 'round';
+    wctx.lineJoin = 'round';
+    wctx.fillStyle = wctx.strokeStyle = '#000';
+    drawStrokeShape(wctx, s.points, s.radius * ppg, ppg, s.shape ?? 'circle', s.shapeAngle ?? 0, s.rectRatio ?? 2.0);
+    wctx.restore();
+  }
+  const ripples = getRipplePattern(wctx, ppg / 128);
+  if (!ripples) return;
+  wctx.save();
+  wctx.globalCompositeOperation = 'source-in';
+  wctx.fillStyle = ripples;
+  wctx.fillRect(0, 0, wc.width, wc.height);
+  wctx.restore();
+  ctx.drawImage(wc, 0, 0);
 }
 
 function drawStrokeShape(
@@ -509,6 +543,64 @@ function pathLayers(
     });
   };
 
+  // Decorations placed every `spacing` tiles; `rand` is stable between redraws.
+  type Mark = ReturnType<typeof spacedAlong>[number];
+  const marks = (spacing: number, draw: (mark: Mark, rand: number, index: number) => void) => {
+    const list = spacedAlong(line, spacing);
+    layers.push(() => {
+      ctx.save();
+      list.forEach((mark, i) => draw(mark, frac(Math.sin((i + 1) * 12.9898) * 43758.5453), i));
+      ctx.restore();
+    });
+  };
+  // Positions across the path are given as a fraction of its width.
+  const spot = (at: Point, normal: Point, side: number) =>
+    [(at.x + normal.x * side * path.width) * ppg, (at.y + normal.y * side * path.width) * ppg] as const;
+  const across = (at: Point, normal: Point, from: number, to: number, color: string, thick: number) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w * thick;
+    ctx.lineCap = 'butt';
+    ctx.beginPath();
+    ctx.moveTo(...spot(at, normal, from));
+    ctx.lineTo(...spot(at, normal, to));
+    ctx.stroke();
+  };
+  const dab = (at: Point, normal: Point, side: number, radius: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(...spot(at, normal, side), w * radius, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  const diamond = (at: Point, normal: Point, radius: number, color: string) => {
+    const [x, y] = spot(at, normal, 0);
+    const ax = normal.x * w * radius;
+    const ay = normal.y * w * radius;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x + ax, y + ay);
+    ctx.lineTo(x - ay, y + ax);
+    ctx.lineTo(x - ax, y - ay);
+    ctx.lineTo(x + ay, y - ax);
+    ctx.closePath();
+    ctx.fill();
+  };
+  const rock = (at: Point, normal: Point, side: number, radius: number, color: string, rand: number) => {
+    const [x, y] = spot(at, normal, side);
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const angle = (k / 6) * Math.PI * 2 + rand * 6;
+      const d = w * radius * (0.7 + frac(rand * (k + 3) * 7.7) * 0.6);
+      if (k === 0) ctx.moveTo(x + Math.cos(angle) * d, y + Math.sin(angle) * d);
+      else ctx.lineTo(x + Math.cos(angle) * d, y + Math.sin(angle) * d);
+    }
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(20,14,8,0.6)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  };
+
   if (path.style === 'dirt_road') {
     const earth = getRoadPattern(ctx, ppg / 128) ?? '#96794f';
     paint('rgba(74, 56, 32, 0.22)', w * 1.34);
@@ -545,19 +637,72 @@ function pathLayers(
     }
   } else if (path.style === 'cobble_path') {
     const pat = getTexturePattern(ctx, 'terrain', 'cobblestone', ppg / 140);
-    paint('rgba(30,28,25,0.55)', w + 4);
-    paint(pat ?? '#78746e', w);
+    paint('rgba(30,24,16,0.25)', w * 1.28);
+    paint('#2f2a23', w * 1.12);
+    // Kerb stones along both sides
+    paint('#9a9284', w * 1.08, [w * 0.34, 2]);
+    paint('#3a342b', w * 0.86);
+    paint(pat ?? '#78746e', w * 0.8);
   } else if (path.style === 'wood_bridge') {
-    const pat = getTexturePattern(ctx, 'floor', 'wood_planks', ppg / 128);
-    paint('#332011', w + 6);
-    paint(pat ?? '#8a623f', w);
+    paint('rgba(0,0,0,0.38)', w * 1.28);
+    paint('#241406', w * 1.04);
+    marks(0.22, ({ at, normal }, rand) => {
+      across(at, normal, -0.5, 0.5, '#2a1708', 0.215);
+      across(at, normal, -0.48, 0.48, pick(rand, ['#9a6b3c', '#885a30', '#a87846', '#7d522c']), 0.18);
+      across(at, normal, -0.44, 0.44, 'rgba(255,225,180,0.16)', 0.03);
+      for (const side of [-0.38, 0.38]) dab(at, normal, side, 0.022, '#2b2118');
+    });
+    for (const side of [-1, 1]) {
+      const beam = offsetLine(line, side * path.width * 0.52);
+      paint('#1d1005', w * 0.17, [], beam);
+      paint('#6d4524', w * 0.11, [], beam);
+      paint('#b1834f', w * 0.03, [], beam);
+    }
+  } else if (path.style === 'rope_bridge') {
+    marks(0.3, ({ at, normal }, rand) => {
+      const skew = (rand - 0.5) * 0.06;
+      across(at, normal, -0.46 + skew, 0.46 + skew, '#26170a', 0.2);
+      across(at, normal, -0.43 + skew, 0.43 + skew, pick(rand, ['#8d6a42', '#76552f', '#9c784c']), 0.15);
+    });
+    for (const side of [-1, 1]) {
+      for (const [offset, width] of [[0.34, 0.05], [0.55, 0.1]]) {
+        const rope = offsetLine(line, side * path.width * offset);
+        paint('#2a1c0c', w * width + 2, [], rope);
+        paint('#c2a069', w * width, [], rope);
+        paint('#7d6038', w * width, [3, 4], rope);
+      }
+    }
+    marks(1.2, ({ at, normal }) => {
+      for (const side of [-0.55, 0.55]) {
+        dab(at, normal, side, 0.11, '#231507');
+        dab(at, normal, side, 0.07, '#8c6538');
+      }
+    });
   } else if (path.style === 'carpet_teal' || path.style === 'carpet_crimson') {
-    paint(path.style === 'carpet_teal' ? '#367d77' : '#852d33', w);
-    paint('#d4b36a', Math.max(2, w * 0.1), [8, 4]);
+    const teal = path.style === 'carpet_teal';
+    paint('rgba(0,0,0,0.3)', w * 1.12);
+    paint(teal ? '#143c39' : '#40101a', w * 1.02);
+    paint('#d9b45c', w * 0.94);
+    paint(teal ? '#174a45' : '#561620', w * 0.84);
+    paint('#d9b45c', w * 0.7);
+    paint(teal ? '#2f7d74' : '#8f2833', w * 0.65);
+    paint('rgba(255,255,255,0.06)', w * 0.5, [2, 3]);
+    marks(0.75, ({ at, normal }) => {
+      diamond(at, normal, 0.22, '#e2c06a');
+      diamond(at, normal, 0.13, teal ? '#174a45' : '#561620');
+      diamond(at, normal, 0.05, '#f6e2a4');
+    });
   } else if (path.style === 'hedge') {
-    paint('rgba(0,0,0,0.35)', w + 6);
-    paint('#2d5232', w);
-    paint('#487a49', w * 0.6);
+    paint('rgba(0,0,0,0.32)', w * 1.2);
+    paint('#16301a', w);
+    marks(0.1, ({ at, normal }, rand, i) => {
+      for (let k = 0; k < 5; k++) {
+        const r = frac(rand * (13 + k * 7) + i * 0.17);
+        const side = frac(r * 9.7) - 0.5;
+        dab(at, normal, side * 0.95, 0.07 + r * 0.05, pick(frac(r * 31), ['#2f6030', '#417a3a', '#528f45', '#27502a']));
+      }
+      if (rand > 0.9) dab(at, normal, rand * 3 - 2.85, 0.035, '#f1d4dd');
+    });
   } else if (path.style === 'rail_tracks') {
     // Gravel bed, wooden sleepers, then two steel rails. Sizes follow the path width (in tiles).
     paint('#3d3933', w * 1.08);
@@ -590,18 +735,38 @@ function pathLayers(
     ] as const) {
       for (const rail of rails) paint(color, Math.max(1, w * width), [], rail);
     }
-  } else if (path.style === 'rope_bridge') {
-    paint('#7c532f', w, [8, 3]);
   } else if (path.style === 'stream_brook') {
-    paint('#1e5b70', w * 1.15);
-    paint('#45a8c4', w * 0.78);
+    paint('rgba(52,40,22,0.35)', w * 1.42);
+    paint('#6b5a3a', w * 1.22);
+    paint('#a9c9c4', w * 1.04);
+    paint('#3c93a8', w * 0.94);
+    paint('#26748f', w * 0.68);
+    paint('#1a5b78', w * 0.36);
+    paint('rgba(214,245,250,0.55)', Math.max(1, w * 0.035), [w * 0.5, w * 0.7], offsetLine(line, path.width * 0.18));
+    paint('rgba(214,245,250,0.4)', Math.max(1, w * 0.025), [w * 0.3, w * 0.9], offsetLine(line, -path.width * 0.24));
+    marks(0.28, ({ at, normal }, rand) => {
+      if (rand < 0.5) return;
+      const side = rand < 0.75 ? -1 : 1;
+      dab(at, normal, side * (0.55 + frac(rand * 17) * 0.1), 0.06 + frac(rand * 29) * 0.07, pick(frac(rand * 41), ['#8b8271', '#6d6656', '#a39a86']));
+    });
   } else if (path.style === 'lava_stream') {
-    paint('#4a180d', w * 1.25);
-    paint('#f97316', w * 0.85);
-    paint('#fde047', w * 0.35);
+    paint('rgba(255,110,20,0.18)', w * 1.7);
+    paint('#1c0d09', w * 1.32);
+    paint('#4a1b0e', w * 1.14);
+    paint('#c63a08', w * 0.92);
+    paint('#f4720f', w * 0.68);
+    paint('#ffb21f', w * 0.38);
+    paint('#ffe478', w * 0.14, [w * 0.6, w * 0.35]);
+    marks(0.17, ({ at, normal }, rand, i) => {
+      // Floating crust and dark rocks along the banks
+      const side = i % 2 ? -1 : 1;
+      dab(at, normal, side * (0.57 + rand * 0.08), 0.08 + frac(rand * 23) * 0.07, pick(frac(rand * 5), ['#2b1712', '#3c2018', '#190c09']));
+      if (rand > 0.72) dab(at, normal, frac(rand * 11) * 0.6 - 0.3, 0.05 + frac(rand * 7) * 0.06, 'rgba(58,20,10,0.85)');
+      if (rand < 0.12) dab(at, normal, rand * 3 - 0.18, 0.05, '#fff2b0');
+    });
   } else if (path.style === 'stone_wall_low') {
-    paint('#292724', w + 3);
-    paint('#7d776e', w);
+    const bends = [line[0], ...spacedAlong(line, 1.6).map((m) => m.at), line[line.length - 1]];
+    layers.push(() => drawWallStroke(ctx, bends, false, 'rough_masonry', path.width * 0.8, ppg, true));
   } else if (
     path.style === 'fence_wood' ||
     path.style === 'fence_picket' ||
@@ -614,11 +779,18 @@ function pathLayers(
     paint('rgba(0, 0, 0, 0.38)', railW + 5);
     paint(isIron ? '#12151c' : '#26160a', railW + 2.5);
     paint(isIron ? '#475569' : isPicket ? '#ded6c3' : '#8c5e35', railW);
+    paint(isIron ? '#94a3b8' : isPicket ? '#fffaf0' : '#b98b58', Math.max(1, railW * 0.22));
+    if (!isIron && !isPicket) paint('rgba(38,20,8,0.7)', Math.max(1, railW * 0.16), [11, 5]);
     if (isPicket || isIron) {
-      paint(isIron ? '#94a3b8' : '#f5efe2', railW * 1.55, [
-        Math.max(2, ppg * 0.06),
-        Math.max(4, ppg * 0.14),
-      ]);
+      marks(isIron ? 0.18 : 0.24, ({ at, normal }) => {
+        if (isIron) {
+          dab(at, normal, 0, 0.1, '#0f172a');
+          dab(at, normal, 0, 0.055, '#cbd5e1');
+        } else {
+          across(at, normal, -0.28, 0.28, '#26160a', 0.17);
+          across(at, normal, -0.24, 0.24, '#f5efe2', 0.12);
+        }
+      });
     }
     // Posts at piece ends and every ~1 tile, following the curve
     const postSize = Math.max(5, railW * 1.75);
@@ -634,6 +806,10 @@ function pathLayers(
       }
       ctx.fill();
       ctx.stroke();
+      ctx.fillStyle = isIron ? '#cbd5e1' : isPicket ? '#fffaf0' : '#c3996a';
+      ctx.beginPath();
+      ctx.arc(px - postSize * 0.1, py - postSize * 0.1, postSize * 0.18, 0, Math.PI * 2);
+      ctx.fill();
     };
     layers.push(() => {
       ctx.save();
@@ -659,9 +835,17 @@ function pathLayers(
       ctx.restore();
     });
   } else {
-    // cliff_edge
-    paint('#2d2925', w);
-    paint('#70685e', w * 0.55);
+    // cliff_edge: a rocky drop, darker towards one side
+    paint('rgba(0,0,0,0.3)', w * 0.9, [], offsetLine(line, path.width * 0.34));
+    paint('#2a241e', w * 0.72);
+    marks(0.14, ({ at, normal }, rand, i) => {
+      for (let k = 0; k < 3; k++) {
+        const r = frac(rand * (11 + k * 13) + i * 0.31);
+        const side = -0.32 + k * 0.3 + (r - 0.5) * 0.18;
+        const tones = k === 0 ? ['#a09482', '#8b8070'] : k === 1 ? ['#756a5c', '#675d50'] : ['#4b433a', '#3d362f'];
+        rock(at, normal, side, 0.11 + r * 0.1, pick(frac(r * 19), tones), r);
+      }
+    });
   }
 
   return layers;
@@ -688,208 +872,6 @@ export function getPathThumbnail(style: PathItem['style']): string {
     pathThumbs.set(style, url);
   }
   return url;
-}
-
-function drawWallStroke(
-  ctx: CanvasRenderingContext2D,
-  points: Point[],
-  closed: boolean,
-  style: WallPolyline['style'],
-  thicknessTiles: number,
-  ppg: number,
-  drawShadow: boolean
-) {
-  if (points.length < 2) return;
-  const colors = getWallColors(style);
-  const w = Math.max(4, thicknessTiles * ppg);
-
-  ctx.save();
-  ctx.lineJoin = 'miter';
-  ctx.lineCap = 'square';
-  ctx.miterLimit = 6;
-
-  // Outer drop shadow on ground
-  if (drawShadow) {
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.58)';
-    ctx.shadowBlur = Math.max(8, w * 0.9);
-    ctx.shadowOffsetX = w * 0.35;
-    ctx.shadowOffsetY = w * 0.45;
-    ctx.strokeStyle = colors.stroke;
-    ctx.lineWidth = w + 3;
-    tracePolyline(ctx, points, ppg, false, closed);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // Dark outer outline
-  ctx.strokeStyle = colors.stroke;
-  ctx.lineWidth = w + 3;
-  tracePolyline(ctx, points, ppg, false, closed);
-  ctx.stroke();
-
-  // Main wall body
-  ctx.strokeStyle = colors.fill;
-  ctx.lineWidth = w;
-  tracePolyline(ctx, points, ppg, false, closed);
-  ctx.stroke();
-
-  // Top bevel / masonry core
-  ctx.strokeStyle = colors.core;
-  ctx.lineWidth = w * 0.58;
-  tracePolyline(ctx, points, ppg, false, closed);
-  ctx.stroke();
-
-  // Stone block ticks along wall
-  ctx.strokeStyle = 'rgba(20, 16, 12, 0.38)';
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([w * 0.12, w * 0.95]);
-  tracePolyline(ctx, points, ppg, false, closed);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Subtle top highlight
-  ctx.strokeStyle = colors.highlight;
-  ctx.globalAlpha = 0.32;
-  ctx.lineWidth = Math.max(1.5, w * 0.16);
-  tracePolyline(ctx, points, ppg, false, closed);
-  ctx.stroke();
-
-  ctx.restore();
-}
-
-function drawPortals(
-  ctx: CanvasRenderingContext2D,
-  portals: PortalItem[],
-  ppg: number
-) {
-  for (const p of portals) {
-    ctx.save();
-    ctx.translate(p.x * ppg, p.y * ppg);
-    ctx.rotate(p.angle);
-
-    const w = p.width * ppg;
-    const h = Math.max(10, ppg * 0.28);
-
-    // Wall cutout / threshold backing
-    ctx.fillStyle = '#3b3329';
-    ctx.fillRect(-w / 2, -h * 0.65, w, h * 1.3);
-
-    if (p.kind === 'archway') {
-      // Stone pillars on sides, open middle
-      ctx.fillStyle = '#8d8578';
-      ctx.strokeStyle = '#24201b';
-      ctx.lineWidth = 2;
-      ctx.fillRect(-w / 2 - 3, -h * 0.7, 8, h * 1.4);
-      ctx.strokeRect(-w / 2 - 3, -h * 0.7, 8, h * 1.4);
-      ctx.fillRect(w / 2 - 5, -h * 0.7, 8, h * 1.4);
-      ctx.strokeRect(w / 2 - 5, -h * 0.7, 8, h * 1.4);
-    } else if (p.kind === 'window_glass' || p.kind === 'window_stained' || p.kind === 'window_bars') {
-      ctx.fillStyle =
-        p.kind === 'window_stained'
-          ? '#4fb3b8'
-          : p.kind === 'window_bars'
-            ? '#333840'
-            : '#7ac2d6';
-      ctx.strokeStyle = '#2b2218';
-      ctx.lineWidth = 2.5;
-      ctx.fillRect(-w / 2, -h * 0.42, w, h * 0.84);
-      ctx.strokeRect(-w / 2, -h * 0.42, w, h * 0.84);
-      // Mullion crossbars
-      ctx.strokeStyle = '#3d3023';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, -h * 0.42);
-      ctx.lineTo(0, h * 0.42);
-      ctx.moveTo(-w / 2, 0);
-      ctx.lineTo(w / 2, 0);
-      ctx.stroke();
-    } else if (p.kind === 'portcullis') {
-      ctx.strokeStyle = '#4a5059';
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(-w / 2, -h * 0.35, w, h * 0.7);
-      for (let x = -w / 2 + 6; x < w / 2; x += 8) {
-        ctx.fillStyle = '#64748b';
-        ctx.beginPath();
-        ctx.arc(x, 0, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else {
-      // Doors
-      const color =
-        p.kind === 'door_iron'
-          ? '#4a5059'
-          : p.kind === 'door_secret'
-            ? '#787166'
-            : p.kind === 'door_ornate_gold'
-              ? '#b89342'
-              : '#784c28';
-      const trim = p.kind === 'door_iron' ? '#22262b' : '#2e1b0d';
-      // Jambs
-      ctx.fillStyle = '#574636';
-      ctx.fillRect(-w / 2 - 2, -h * 0.72, 6, h * 1.44);
-      ctx.fillRect(w / 2 - 4, -h * 0.72, 6, h * 1.44);
-
-      const swingDeg = p.openAngle ?? (p.open ? 75 : 0);
-      const swingRad = (swingDeg * Math.PI) / 180;
-
-      if (swingDeg > 1) {
-        if (p.kind === 'door_double') {
-          const leafW = (w - 4) * 0.48;
-          // Left leaf
-          ctx.save();
-          ctx.translate(-w / 2 + 2, 0);
-          ctx.rotate(-swingRad);
-          ctx.fillStyle = color;
-          ctx.strokeStyle = trim;
-          ctx.lineWidth = 2;
-          ctx.fillRect(0, -h * 0.25, leafW, h * 0.5);
-          ctx.strokeRect(0, -h * 0.25, leafW, h * 0.5);
-          ctx.restore();
-          // Right leaf
-          ctx.save();
-          ctx.translate(w / 2 - 2, 0);
-          ctx.rotate(swingRad);
-          ctx.fillStyle = color;
-          ctx.strokeStyle = trim;
-          ctx.lineWidth = 2;
-          ctx.fillRect(-leafW, -h * 0.25, leafW, h * 0.5);
-          ctx.strokeRect(-leafW, -h * 0.25, leafW, h * 0.5);
-          ctx.restore();
-        } else {
-          // Single swung door leaf
-          ctx.save();
-          ctx.translate(-w / 2 + 2, 0);
-          ctx.rotate(-swingRad);
-          ctx.fillStyle = color;
-          ctx.strokeStyle = trim;
-          ctx.lineWidth = 2;
-          ctx.fillRect(0, -h * 0.25, w * 0.88, h * 0.5);
-          ctx.strokeRect(0, -h * 0.25, w * 0.88, h * 0.5);
-          ctx.restore();
-        }
-      } else {
-        ctx.fillStyle = color;
-        ctx.strokeStyle = trim;
-        ctx.lineWidth = 2;
-        ctx.fillRect(-w / 2 + 2, -h * 0.35, w - 4, h * 0.7);
-        ctx.strokeRect(-w / 2 + 2, -h * 0.35, w - 4, h * 0.7);
-        if (p.kind === 'door_double') {
-          ctx.beginPath();
-          ctx.moveTo(0, -h * 0.35);
-          ctx.lineTo(0, h * 0.35);
-          ctx.stroke();
-        }
-        // Brass handle
-        ctx.fillStyle = '#d9b35b';
-        ctx.beginPath();
-        ctx.arc(w * 0.28, h * 0.2, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    ctx.restore();
-  }
 }
 
 const structureThumbs = new Map<string, string>();

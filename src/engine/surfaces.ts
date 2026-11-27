@@ -1,4 +1,4 @@
-import type { FloorPatternId, TerrainMaterialId } from '../types/map';
+import type { FloorPatternId, RoofStyleId, TerrainMaterialId } from '../types/map';
 
 // Seamless hand-painted style surfaces: every helper wraps around the texture edges.
 export const SURFACE_SIZE = 256;
@@ -977,15 +977,194 @@ const FLOORS: Record<FloorPatternId, Painter> = {
   carpet_royal_blue: (ctx, rand) => carpet(ctx, rand, '#2c4d86', '#182b50'),
 };
 
+// ---------- Roofs ----------
+
+type TileShape = 'slate' | 'scale' | 'barrel';
+
+// Overlapping courses of tiles, drawn bottom-up so each row covers the one below.
+function shingles(
+  ctx: CanvasRenderingContext2D,
+  rand: Rand,
+  shape: TileShape,
+  cols: number,
+  rows: number,
+  colors: string[],
+  gap: string
+) {
+  const w = S / cols;
+  const h = S / rows;
+  ctx.fillStyle = gap;
+  ctx.fillRect(0, 0, S, S);
+  const tiles = Array.from({ length: cols * rows }, () => ({
+    color: pickFrom(rand, colors),
+    drop: rand(),
+    wear: rand(),
+  }));
+  // One extra row each side wraps the pattern vertically.
+  for (let r = rows; r >= -1; r--) {
+    const row = (r + rows) % rows;
+    for (let c = -1; c <= cols; c++) {
+      const t = tiles[row * cols + ((c + cols) % cols)];
+      const x = c * w + (row % 2) * (w / 2) + 0.8;
+      const y = r * h - h * 0.35;
+      const tw = w - (shape === 'barrel' ? 3 : 1.6);
+      const th = h * 1.35 + (shape === 'slate' ? t.drop * h * 0.18 : 0);
+      const outline = (dx: number, dy: number) => {
+        ctx.beginPath();
+        ctx.moveTo(x + dx, y + dy);
+        ctx.lineTo(x + tw + dx, y + dy);
+        if (shape === 'slate') {
+          ctx.lineTo(x + tw + dx, y + th - 3 + dy);
+          ctx.lineTo(x + tw - 3 + dx, y + th + dy);
+          ctx.lineTo(x + 2 + dx, y + th - t.wear * 3 + dy);
+        } else {
+          ctx.lineTo(x + tw + dx, y + th * 0.55 + dy);
+          ctx.quadraticCurveTo(x + tw + dx, y + th + dy, x + tw / 2 + dx, y + th + dy);
+          ctx.quadraticCurveTo(x + dx, y + th + dy, x + dx, y + th * 0.55 + dy);
+        }
+        ctx.closePath();
+      };
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      outline(1, 3);
+      ctx.fill();
+      const base = rgb(t.color);
+      const fill = ctx.createLinearGradient(x, y, shape === 'barrel' ? x + tw : x, shape === 'barrel' ? y : y + th);
+      const css = (d: number) => `rgb(${shade(base, d).map((v) => Math.round(clamp(v, 0, 255))).join(',')})`;
+      if (shape === 'barrel') {
+        fill.addColorStop(0, css(-36));
+        fill.addColorStop(0.38, css(30));
+        fill.addColorStop(1, css(-30));
+      } else {
+        fill.addColorStop(0, css(-30));
+        fill.addColorStop(1, css(16));
+      }
+      ctx.fillStyle = fill;
+      outline(0, 0);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,240,215,0.22)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x + tw * 0.2, y + th - 2.5);
+      ctx.lineTo(x + tw * 0.75, y + th - 2.5);
+      ctx.stroke();
+    }
+  }
+}
+
+function grime(ctx: CanvasRenderingContext2D, rand: Rand, color: string, count: number) {
+  scatter(rand, count, 5, (x, y) => oval(ctx, x, y, 1 + rand() * 2.4, 0.8 + rand() * 1.8, rand() * 3, color));
+}
+
+const ROOFS: Record<RoofStyleId, Painter> = {
+  slate_blue: (ctx, rand) => {
+    shingles(ctx, rand, 'slate', 8, 10, ['#456078', '#3a5268', '#526d85', '#34495c'], '#17222c');
+    grime(ctx, rand, 'rgba(150,180,160,0.18)', 150);
+  },
+  dark_shingle: (ctx, rand) => {
+    shingles(ctx, rand, 'slate', 10, 12, ['#43474f', '#363a41', '#50545c', '#2e3137'], '#121316');
+    grime(ctx, rand, 'rgba(96,116,70,0.25)', 110);
+  },
+  terracotta: (ctx, rand) => {
+    shingles(ctx, rand, 'barrel', 8, 8, ['#b25a38', '#9d4a2e', '#c06a43', '#8c4029'], '#3a170d');
+    grime(ctx, rand, 'rgba(60,26,12,0.25)', 120);
+  },
+  crimson_tile: (ctx, rand) => {
+    shingles(ctx, rand, 'scale', 9, 12, ['#92292f', '#7d2027', '#a63439', '#6b1b22'], '#2a080b');
+    grime(ctx, rand, 'rgba(255,180,150,0.14)', 90);
+  },
+  gold_dome: (ctx, rand) => {
+    shingles(ctx, rand, 'scale', 10, 12, ['#c59c35', '#b1882a', '#d6b04a', '#a37a22'], '#4a3309');
+    scatter(rand, 60, 4, (x, y) => oval(ctx, x, y, 1.6, 1.6, 0, 'rgba(255,248,200,0.8)'));
+  },
+  thatch: (ctx, rand) => {
+    ctx.fillStyle = '#6d5528';
+    ctx.fillRect(0, 0, S, S);
+    for (let row = 7; row >= -1; row--) {
+      const y = ((row + 8) % 8) * 32;
+      const straws = Array.from({ length: 190 }, () => ({
+        x: rand() * S,
+        top: rand() * 10,
+        len: 26 + rand() * 20,
+        lean: (rand() - 0.5) * 9,
+        color: pickFrom(rand, ['#c7a557', '#ad8c44', '#dcc07a', '#8f7236', '#bd9a4e']),
+      }));
+      for (const s of straws) {
+        wrapped(s.x, y + s.top, 60, (px, py) => {
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(px + s.lean, py + s.len);
+          ctx.stroke();
+        });
+      }
+    }
+    // Binding courses
+    for (let y = 8; y < S; y += 64) {
+      ctx.fillStyle = 'rgba(48,32,10,0.55)';
+      ctx.fillRect(0, y, S, 3);
+      for (let x = 4; x < S; x += 16) oval(ctx, x, y + 1.5, 2.2, 3.4, 0.5, '#5a4119');
+    }
+  },
+  copper_verdigris: (ctx, rand) => {
+    const patina = fbm(rand, 5);
+    const streak = tileNoise(rand, S, 64, 5);
+    pixels(ctx, (x, y) => {
+      const panel = x % 32;
+      const metal = mix(rgb('#3f8b7a'), rgb('#6fb7a2'), patina(x, y));
+      const worn = mix(metal, rgb('#8a6038'), clamp(streak(x, y) * 3 - 2));
+      const seam = panel < 3 ? 34 : panel < 6 ? -42 : (panel - 18) * -0.7;
+      const lap = (y + (Math.floor(x / 32) % 2) * 32) % 64 < 2 ? -38 : 0;
+      return shade(worn, seam + lap);
+    });
+  },
+  wood_planks_roof: (ctx, rand) => {
+    const grain = woodTone(rand);
+    const base = rgb('#74502f');
+    slabs(
+      ctx,
+      rand,
+      slabRows(
+        Array.from({ length: 8 }, () => ({ widths: [64, 64, 64, 64], shift: Math.floor(rand() * 64) }))
+      ),
+      (s, tone) => shade(base, grain(s.u, s.v + s.id * 29, tone) + (s.v / s.h - 0.5) * 34),
+      '#1f1208',
+      1.2,
+      18
+    );
+    scatter(rand, 70, 3, (x, y) => oval(ctx, x, y, 1.2, 1.2, 0, '#24160b'));
+  },
+};
+
+// Soft bright web used on top of painted water; everything else stays transparent.
+export function paintRipples(ctx: CanvasRenderingContext2D, rand: Rand) {
+  const cell = voronoi(rand, 5, 5, 0.9, 2.5, 34);
+  const fade = fbm(rand, 5);
+  const image = ctx.createImageData(S, S);
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const edge = cell(x, y).edge;
+      const o = (y * S + x) * 4;
+      image.data[o] = 205;
+      image.data[o + 1] = 245;
+      image.data[o + 2] = 250;
+      image.data[o + 3] = clamp(1 - edge / 5) ** 2 * clamp(fade(x, y) * 1.5) * 105;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+}
+
 export function paintSurface(
   ctx: CanvasRenderingContext2D,
-  kind: 'terrain' | 'floor',
+  kind: 'terrain' | 'floor' | 'roof',
   id: string,
   rand: Rand
 ) {
   const painter =
     kind === 'terrain'
       ? (TERRAIN[id as TerrainMaterialId] ?? TERRAIN.dirt)
-      : (FLOORS[id as FloorPatternId] ?? FLOORS.wood_planks);
+      : kind === 'floor'
+        ? (FLOORS[id as FloorPatternId] ?? FLOORS.wood_planks)
+        : (ROOFS[id as RoofStyleId] ?? ROOFS.slate_blue);
   painter(ctx, rand);
 }

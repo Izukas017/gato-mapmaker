@@ -4,7 +4,7 @@ import type {
   TerrainMaterialId,
   WallStyleId,
 } from '../types/map';
-import { paintSurface, SURFACE_SIZE, tileNoise } from './surfaces';
+import { paintRipples, paintSurface, SURFACE_SIZE, tileNoise } from './surfaces';
 
 // Deterministic PRNG for repeatable procedural textures
 function mulberry32(seed: number): () => number {
@@ -102,51 +102,10 @@ const textureCache = new Map<string, HTMLCanvasElement>();
 const patternCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasPattern>>();
 const thumbCache = new Map<string, string>();
 
-function generateSurface(kind: 'terrain' | 'floor', id: string): HTMLCanvasElement {
+function generateSurface(kind: 'terrain' | 'floor' | 'roof', id: string): HTMLCanvasElement {
   const [canvas, ctx] = makeCanvas(SURFACE_SIZE, SURFACE_SIZE);
   const rand = mulberry32(id.split('').reduce((acc, c) => acc * 31 + c.charCodeAt(0), 17));
   paintSurface(ctx, kind, id, rand);
-  return canvas;
-}
-
-function generateRoofTexture(id: RoofStyleId): HTMLCanvasElement {
-  const size = 256;
-  const [canvas, ctx] = makeCanvas(size, size);
-  const rand = mulberry32(id.split('').reduce((acc, c) => acc * 41 + c.charCodeAt(0), 53));
-
-  const palettes: Record<RoofStyleId, [string, string, string]> = {
-    slate_blue: ['#385166', '#45637b', '#2b3f50'],
-    terracotta: ['#8c4330', '#a3513a', '#6e3223'],
-    thatch: ['#9a804d', '#b0955d', '#7c653a'],
-    dark_shingle: ['#373b42', '#464b54', '#292c32'],
-    copper_verdigris: ['#3b786b', '#4d9686', '#29574d'],
-    crimson_tile: ['#7a252a', '#943137', '#59181c'],
-    wood_planks_roof: ['#634329', '#785233', '#4a311d'],
-    gold_dome: ['#a68438', '#c49e47', '#7d6124'],
-  };
-
-  const [base, light, dark] = palettes[id] ?? palettes.slate_blue;
-  ctx.fillStyle = dark;
-  ctx.fillRect(0, 0, size, size);
-
-  const rows = 12;
-  const cols = 8;
-  const rowH = size / rows;
-  const colW = size / cols;
-
-  for (let r = 0; r < rows; r++) {
-    const offset = (r % 2) * (colW * 0.5);
-    for (let c = -1; c <= cols; c++) {
-      const x = c * colW + offset;
-      const y = r * rowH;
-      ctx.fillStyle = rand() > 0.55 ? light : rand() > 0.25 ? base : dark;
-      ctx.fillRect(x + 1, y + 1, colW - 2, rowH - 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.32)';
-      ctx.fillRect(x, y + rowH - 3, colW, 3);
-      ctx.fillStyle = 'rgba(255,255,255,0.08)';
-      ctx.fillRect(x + 1, y + 1, colW - 2, 2);
-    }
-  }
   return canvas;
 }
 
@@ -157,8 +116,7 @@ export function getTextureCanvas(
   const key = `${kind}:${id}`;
   let c = textureCache.get(key);
   if (!c) {
-    c =
-      kind === 'roof' ? generateRoofTexture(id as RoofStyleId) : generateSurface(kind, id);
+    c = generateSurface(kind, id);
     textureCache.set(key, c);
   }
   return c;
@@ -254,6 +212,27 @@ export function getRoadPattern(
   return pattern;
 }
 
+let rippleCanvas: HTMLCanvasElement | null = null;
+const ripplePatterns = new WeakMap<CanvasRenderingContext2D, CanvasPattern>();
+
+export function getRipplePattern(
+  ctx: CanvasRenderingContext2D,
+  scale: number
+): CanvasPattern | null {
+  let pattern = ripplePatterns.get(ctx) ?? null;
+  if (!pattern) {
+    if (!rippleCanvas) {
+      const [canvas, c] = makeCanvas(SURFACE_SIZE, SURFACE_SIZE);
+      paintRipples(c, mulberry32(913));
+      rippleCanvas = canvas;
+    }
+    pattern = ctx.createPattern(rippleCanvas, 'repeat');
+    if (pattern) ripplePatterns.set(ctx, pattern);
+  }
+  pattern?.setTransform(new DOMMatrix().scale(scale, scale));
+  return pattern;
+}
+
 export function getTextureThumbnail(
   kind: 'terrain' | 'floor' | 'roof',
   id: string
@@ -268,38 +247,4 @@ export function getTextureThumbnail(
     thumbCache.set(key, url);
   }
   return url;
-}
-
-export function getWallColors(style: WallStyleId): {
-  fill: string;
-  core: string;
-  stroke: string;
-  highlight: string;
-} {
-  switch (style) {
-    case 'stone_hewn':
-      return { fill: '#787166', core: '#948b7d', stroke: '#2a2621', highlight: '#b5ab9a' };
-    case 'timber_frame':
-      return { fill: '#6c492d', core: '#8a603d', stroke: '#26170c', highlight: '#ab7e55' };
-    case 'rough_masonry':
-      return { fill: '#5c5852', core: '#736f68', stroke: '#201e1c', highlight: '#8c877f' };
-    case 'brick_aged':
-      return { fill: '#7c4839', core: '#965a49', stroke: '#2c1712', highlight: '#b3715e' };
-    case 'temple_gold':
-      return { fill: '#8f7543', core: '#b39558', stroke: '#302512', highlight: '#d6ba7c' };
-    case 'obsidian_black':
-      return { fill: '#282533', core: '#3d384d', stroke: '#100e17', highlight: '#695f85' };
-    case 'marble_white':
-      return { fill: '#c7c1b3', core: '#e3ded1', stroke: '#4a463e', highlight: '#ffffff' };
-    case 'sandstone_wall':
-      return { fill: '#ad8b5c', core: '#c9a675', stroke: '#3d2d19', highlight: '#e3c496' };
-    case 'cave_rock':
-      return { fill: '#474039', core: '#5c534a', stroke: '#1c1815', highlight: '#756a5f' };
-    case 'iron_fortress':
-      return { fill: '#3e444f', core: '#57606e', stroke: '#16191f', highlight: '#8592a6' };
-    case 'hedge_wall':
-      return { fill: '#2c5430', core: '#3f7344', stroke: '#132615', highlight: '#639e67' };
-    case 'palisade_wood':
-      return { fill: '#593c22', core: '#75502f', stroke: '#1f1309', highlight: '#966940' };
-  }
 }

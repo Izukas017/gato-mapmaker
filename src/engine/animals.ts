@@ -193,7 +193,27 @@ export const EXTRA_ANIMALS: PropDefinition[] = ROWS.map(
   })
 );
 
-const LOOKS = new Map(ROWS.map((row) => [row[0], { body: row[2], look: row[6] }]));
+// The first animals of the library, redrawn with these same bodies.
+const FIRST: [id: string, body: Body, look: Look][] = [
+  ['horse_brown', 'beast', { coat: '#8a5129', accent: '#2a170b', mane: 'strip', tail: 'bushy', ears: 'point', neck: 0.5, girth: 0.9 }],
+  ['horse_white', 'beast', { coat: '#eeeae2', accent: '#b7b2a8', mane: 'strip', tail: 'bushy', ears: 'point', neck: 0.5, girth: 0.9 }],
+  ['draft_mule', 'beast', { coat: '#9c7c58', accent: '#4a3320', belly: '#c3a77a', pattern: 'saddle', mane: 'strip', tail: 'tuft', ears: 'long', neck: 0.35 }],
+  ['cow_spotted', 'beast', { coat: '#f2ede2', accent: '#33261e', pattern: 'patches', horns: 'curved', ears: 'floppy', tail: 'tuft', girth: 1.15, muzzle: '#f2b6b6' }],
+  ['pig_pink', 'beast', { coat: '#f0a8b4', accent: '#d9808f', ears: 'floppy', tail: 'curl', girth: 1.2, muzzle: '#e38898' }],
+  ['sheep_woolly', 'beast', { coat: '#efe9da', accent: '#cdc3ac', pattern: 'wool', ears: 'floppy', tail: 'short', girth: 1.2, muzzle: '#3b3430' }],
+  ['goat_horned', 'beast', { coat: '#bfa98e', accent: '#6e5a44', horns: 'curved', ears: 'floppy', tail: 'short' }],
+  ['dog_hound', 'beast', { coat: '#a96c38', accent: '#4f2f16', pattern: 'saddle', ears: 'floppy', tail: 'long' }],
+  ['cat_tabby', 'beast', { coat: '#dd822c', accent: '#7c3f10', pattern: 'stripes', ears: 'point', tail: 'ringed' }],
+  ['wolf_grey', 'beast', { coat: '#7b8290', accent: '#353c49', pattern: 'saddle', ears: 'point', tail: 'bushy' }],
+  ['bear_brown', 'beast', { coat: '#6b4426', accent: '#3a2312', ears: 'round', tail: 'short', girth: 1.25, head: 1.25, muzzle: '#b68a62' }],
+  ['deer_stag', 'beast', { coat: '#a86f3d', accent: '#6a421f', horns: 'antlers', ears: 'point', tail: 'short', girth: 0.85, neck: 0.3 }],
+  ['boar_wild', 'beast', { coat: '#5a4231', accent: '#241710', mane: 'strip', ears: 'point', tail: 'short', tusks: true, head: 1.15, girth: 1.1 }],
+];
+
+const LOOKS = new Map<string, { body: Body; look: Look }>([
+  ...ROWS.map((row) => [row[0], { body: row[2], look: row[6] }] as const),
+  ...FIRST.map(([id, body, look]) => [id, { body, look }] as const),
+]);
 const OUTLINE = 'rgba(18, 11, 6, 0.85)';
 const TAU = Math.PI * 2;
 
@@ -204,6 +224,25 @@ export function drawAnimal(
   w: number,
   h: number
 ): boolean {
+  if (id === 'chickens_flock') {
+    const birds = [
+      ['hen_white', 0.28, 0.32, -0.5],
+      ['rooster', 0.72, 0.42, 0.8],
+      ['hen_white', 0.45, 0.72, 2.3],
+    ] as const;
+    for (const [bird, x, y, turn] of birds) {
+      const sprite = document.createElement('canvas');
+      sprite.width = Math.round(w * 0.46);
+      sprite.height = Math.round(h * 0.56);
+      drawAnimal(sprite.getContext('2d')!, bird, sprite.width, sprite.height);
+      ctx.save();
+      ctx.translate(x * w, y * h);
+      ctx.rotate(turn);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+      ctx.restore();
+    }
+    return true;
+  }
   const entry = LOOKS.get(id);
   if (!entry) return false;
   const { body, look } = entry;
