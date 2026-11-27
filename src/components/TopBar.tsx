@@ -66,7 +66,7 @@ export function TopBar({ onOpenNewDialog, onOpenExportDialog }: TopBarProps) {
         <div className="brand-mark">
           <div className="brand-badge">G</div>
           <span>Gato MapMaker</span>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>v0.1.2</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>v0.2</span>
         </div>
 
         <div className="dropdown-wrap">
