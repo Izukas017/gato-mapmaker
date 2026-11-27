@@ -155,6 +155,10 @@ export function ToolDrawer() {
     cy_security: true,
     cy_nature: true,
     cy_lighting: true,
+    cy_food: true,
+    cy_medical: true,
+    cy_transit: true,
+    cy_office: true,
   });
   const [propQuery, setPropQuery] = useState('');
   const cyberMode = useCyberMode();

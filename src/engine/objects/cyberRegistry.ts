@@ -13,6 +13,10 @@ export const CYBER_CATEGORIES: { id: PropCategory; label: string }[] = [
   { id: 'cy_security', label: 'Seguridad y Defensa' },
   { id: 'cy_nature', label: 'Naturaleza Urbana' },
   { id: 'cy_lighting', label: 'Iluminación Neón' },
+  { id: 'cy_food', label: 'Comida y Mercado' },
+  { id: 'cy_medical', label: 'Clínica y Laboratorio' },
+  { id: 'cy_transit', label: 'Transporte y Metro' },
+  { id: 'cy_office', label: 'Oficinas Corporativas' },
 ];
 
 export const CYBER_PROPS: PropDefinition[] = [];

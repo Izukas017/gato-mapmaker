@@ -2,7 +2,7 @@
 import { type Kit, liquid, metal, plain } from './kit';
 import { add, NEONS, neon, PAINTS, tint } from './cyberRegistry';
 
-interface Car {
+export interface Car {
   body: string;
   hood: number; // where the windscreen starts
   cabin: number; // length of the cabin
@@ -18,7 +18,7 @@ interface Car {
 
 const GLASS = liquid('#1a2638');
 
-function vehicle(k: Kit, c: Car) {
+export function vehicle(k: Kit, c: Car) {
   const top = c.hood;
   const bottom = c.hood + c.cabin;
   if (c.underglow) k.glow(0.5, 0.5, 0.75, c.underglow, 0.7);
@@ -56,7 +56,7 @@ function vehicle(k: Kit, c: Car) {
   c.extra?.(k);
 }
 
-const lightbar = (y: number, a = '#ff2a3a', b = '#2a6aff') => (k: Kit) => {
+export const lightbar = (y: number, a = '#ff2a3a', b = '#2a6aff') => (k: Kit) => {
   k.rect(0.26, y, 0.48, 0.05, plain('#202228'), 0.02);
   k.glow(0.36, y + 0.025, 0.18, a, 0.8);
   k.glow(0.64, y + 0.025, 0.18, b, 0.8);

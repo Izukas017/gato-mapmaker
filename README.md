@@ -59,15 +59,17 @@ Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) ins
 
 ### Variante CyberGato MapMaker
 
-Desde el selector de la marca (arriba a la izquierda) se cambia a **CyberGato**, con **450 modelos propios** para ciudades cyberpunk:
+Desde el selector de la marca (arriba a la izquierda) se cambia a **CyberGato**, con **781 modelos propios** para ciudades cyberpunk (693 objetos y 88 texturas y estructuras):
 
 | Tipo | Nº | Tipo | Nº |
 | --- | --- | --- | --- |
-| Vehículos (coches, motos, drones, aerodinos…) | 93 | Hogar y apartamentos | 46 |
-| Calle y mobiliario urbano | 43 | Neones y publicidad | 39 |
-| Industria y puerto | 34 | Tecnología y robots | 32 |
-| Ocio nocturno | 22 | Iluminación neón | 21 |
-| Seguridad y defensa | 16 | Naturaleza urbana | 16 |
+| Vehículos (coches, motos, drones, aerodinos…) | 166 | Neones y publicidad | 70 |
+| Hogar y apartamentos | 58 | Calle y mobiliario urbano | 57 |
+| Tecnología y robots | 47 | Comida y mercado | 46 |
+| Transporte y metro | 36 | Iluminación neón | 35 |
+| Industria y puerto | 34 | Ocio nocturno | 33 |
+| Clínica y laboratorio | 29 | Oficinas corporativas | 29 |
+| Naturaleza urbana | 27 | Seguridad y defensa | 26 |
 | Terrenos | 14 | Suelos | 22 |
 | Muros | 16 | Puertas y ventanas | 10 |
 | Caminos (carreteras, raíles, cables…) | 16 | Tejados | 10 |

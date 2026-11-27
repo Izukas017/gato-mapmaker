@@ -6,6 +6,7 @@ import { createKit, type Painter } from './objects/kit';
 import { OUTDOOR } from './objects/outdoor';
 import './objects/cyberVehicles';
 import './objects/cyberCity';
+import './objects/cyberMore';
 import { CYBER_CATEGORIES, CYBER_LIGHTS, CYBER_OBJECTS, CYBER_PROPS } from './objects/cyberRegistry';
 import type { CustomAsset, PropCategory, PropDefinition } from '../types/map';
 
