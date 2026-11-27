@@ -99,7 +99,10 @@ export type PathStyleId =
   | 'rope_bridge'
   | 'stream_brook'
   | 'lava_stream'
-  | 'stone_wall_low';
+  | 'stone_wall_low'
+  | 'fence_wood'
+  | 'fence_picket'
+  | 'fence_iron';
 
 export type RoofStyleId =
   | 'slate_blue'
@@ -299,6 +302,10 @@ export interface SelectionRef {
 
 export type PropCategory =
   | 'furniture'
+  | 'bathroom'
+  | 'village'
+  | 'fences'
+  | 'animals'
   | 'tavern'
   | 'shop'
   | 'dungeon'

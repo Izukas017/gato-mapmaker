@@ -2,6 +2,10 @@ import type { CustomAsset, PropCategory, PropDefinition } from '../types/map';
 
 export const PROP_CATEGORIES: { id: PropCategory; label: string }[] = [
   { id: 'furniture', label: 'Casas y Mobiliario' },
+  { id: 'bathroom', label: 'Baño y Aseo' },
+  { id: 'village', label: 'Pueblo y Aldea' },
+  { id: 'fences', label: 'Vallas y Cercados' },
+  { id: 'animals', label: 'Animales y Criaturas' },
   { id: 'tavern', label: 'Tabernas y Cocinas' },
   { id: 'shop', label: 'Tiendas y Comercio' },
   { id: 'dungeon', label: 'Mazmorras y Trampas' },
@@ -36,9 +40,70 @@ export const BUILTIN_PROPS: PropDefinition[] = [
   { id: 'sofa_teal', name: 'Diván Turquesa', category: 'furniture', widthTiles: 1.7, heightTiles: 0.85, defaultLayer: 'above_floor', defaultShadow: true, tags: ['sofa', 'sillon'] },
   { id: 'sofa_crimson', name: 'Diván Carmesí', category: 'furniture', widthTiles: 1.7, heightTiles: 0.85, defaultLayer: 'above_floor', defaultShadow: true, tags: ['sofa', 'sillon', 'rojo'] },
   { id: 'piano_harpsichord', name: 'Clavecín Piano', category: 'furniture', widthTiles: 1.6, heightTiles: 2.1, defaultLayer: 'above_floor', defaultShadow: true, tags: ['piano', 'musica', 'instrumento'] },
-  { id: 'bathtub_wood', name: 'Tina de Baño', category: 'furniture', widthTiles: 1.1, heightTiles: 1.7, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'tina', 'agua'] },
   { id: 'mirror_standing', name: 'Espejo de Pie', category: 'furniture', widthTiles: 1.0, heightTiles: 0.55, defaultLayer: 'above_floor', defaultShadow: true, tags: ['espejo', 'cristal'] },
   { id: 'fireplace', name: 'Chimenea', category: 'furniture', widthTiles: 1.8, heightTiles: 0.9, defaultLayer: 'above_floor', defaultShadow: true, tags: ['fuego', 'hogar'] },
+
+  // Bathroom & Washroom
+  { id: 'bathtub_wood', name: 'Tina de Madera', category: 'bathroom', widthTiles: 1.15, heightTiles: 1.75, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'tina', 'agua', 'madera'] },
+  { id: 'bathtub_copper', name: 'Bañera de Cobre', category: 'bathroom', widthTiles: 1.15, heightTiles: 1.85, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'banera', 'cobre', 'agua'] },
+  { id: 'bathtub_marble', name: 'Bañera de Mármol', category: 'bathroom', widthTiles: 1.4, heightTiles: 2.0, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'banera', 'marmol', 'lujo', 'termas'] },
+  { id: 'privy_wood', name: 'Letrina Madera', category: 'bathroom', widthTiles: 0.95, heightTiles: 0.95, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'letrina', 'wc', 'retrete'] },
+  { id: 'toilet_porcelain', name: 'Retrete Cerámica', category: 'bathroom', widthTiles: 0.85, heightTiles: 1.05, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'retrete', 'inodoro', 'wc'] },
+  { id: 'washbasin_stand', name: 'Lavabo con Jarra', category: 'bathroom', widthTiles: 1.1, heightTiles: 0.8, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'lavabo', 'palangana', 'jarra'] },
+  { id: 'sink_stone', name: 'Lavamanos Piedra', category: 'bathroom', widthTiles: 1.15, heightTiles: 0.8, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'lavabo', 'pila', 'grifo'] },
+  { id: 'vanity_mirror', name: 'Tocador Espejo', category: 'bathroom', widthTiles: 1.4, heightTiles: 0.85, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'tocador', 'espejo', 'perfume'] },
+  { id: 'folding_screen', name: 'Biombo Privacidad', category: 'bathroom', widthTiles: 1.8, heightTiles: 0.55, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'biombo', 'vestidor'] },
+  { id: 'towel_rack', name: 'Toallero', category: 'bathroom', widthTiles: 1.1, heightTiles: 0.55, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'toallas', 'ropa'] },
+  { id: 'laundry_tub', name: 'Barreño Colada', category: 'bathroom', widthTiles: 1.15, heightTiles: 1.15, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'colada', 'lavar', 'agua'] },
+  { id: 'chamber_pot', name: 'Orinal y Cubo', category: 'bathroom', widthTiles: 0.85, heightTiles: 0.75, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'orinal', 'cubo', 'jabon'] },
+  { id: 'sauna_brazier', name: 'Estufa de Sauna', category: 'bathroom', widthTiles: 1.2, heightTiles: 1.2, defaultLayer: 'above_floor', defaultShadow: true, tags: ['bano', 'sauna', 'vapor', 'termas'] },
+
+  // Village & Farm
+  { id: 'village_well_roofed', name: 'Pozo con Tejadillo', category: 'village', widthTiles: 1.8, heightTiles: 1.8, defaultLayer: 'above_walls', defaultShadow: true, tags: ['pueblo', 'pozo', 'agua', 'plaza'] },
+  { id: 'notice_board', name: 'Tablón Misiones', category: 'village', widthTiles: 1.5, heightTiles: 0.55, defaultLayer: 'above_walls', defaultShadow: true, tags: ['pueblo', 'tablon', 'anuncios', 'misiones'] },
+  { id: 'street_lamppost', name: 'Farola de Calle', category: 'village', widthTiles: 0.9, heightTiles: 0.9, defaultLayer: 'above_walls', defaultShadow: true, tags: ['pueblo', 'farola', 'luz', 'calle'] },
+  { id: 'water_trough', name: 'Abrevadero', category: 'village', widthTiles: 2.0, heightTiles: 0.85, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'abrevadero', 'agua', 'caballos'] },
+  { id: 'hay_bale_round', name: 'Bala de Heno', category: 'village', widthTiles: 1.15, heightTiles: 1.15, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'heno', 'paja', 'granja'] },
+  { id: 'hay_pile', name: 'Montón de Paja', category: 'village', widthTiles: 1.8, heightTiles: 1.6, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'paja', 'horca', 'granja'] },
+  { id: 'wheelbarrow', name: 'Carretilla', category: 'village', widthTiles: 1.0, heightTiles: 1.55, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'carretilla', 'granja'] },
+  { id: 'woodpile_logs', name: 'Leña Apilada', category: 'village', widthTiles: 1.6, heightTiles: 0.9, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'lena', 'troncos', 'madera'] },
+  { id: 'chopping_block', name: 'Tocón con Hacha', category: 'village', widthTiles: 1.0, heightTiles: 1.0, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'tocon', 'hacha', 'lena'] },
+  { id: 'vegetable_patch', name: 'Huerto Verduras', category: 'village', widthTiles: 2.2, heightTiles: 1.8, defaultLayer: 'above_floor', defaultShadow: false, tags: ['pueblo', 'huerto', 'cultivo', 'calabazas'] },
+  { id: 'scarecrow', name: 'Espantapájaros', category: 'village', widthTiles: 1.25, heightTiles: 1.25, defaultLayer: 'above_walls', defaultShadow: true, tags: ['pueblo', 'espantapajaros', 'campo', 'granja'] },
+  { id: 'clothesline', name: 'Tendedero Ropa', category: 'village', widthTiles: 2.4, heightTiles: 0.65, defaultLayer: 'above_walls', defaultShadow: true, tags: ['pueblo', 'tendedero', 'ropa'] },
+  { id: 'chicken_coop', name: 'Gallinero', category: 'village', widthTiles: 1.6, heightTiles: 1.3, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'gallinero', 'granja'] },
+  { id: 'doghouse', name: 'Caseta Perro', category: 'village', widthTiles: 1.0, heightTiles: 1.15, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'caseta', 'perro'] },
+  { id: 'beehive_skep', name: 'Colmena Abejas', category: 'village', widthTiles: 0.95, heightTiles: 0.95, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'colmena', 'miel', 'granja'] },
+  { id: 'pillory_stocks', name: 'Cepo de Plaza', category: 'village', widthTiles: 1.4, heightTiles: 0.7, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'cepo', 'plaza', 'castigo'] },
+  { id: 'fruit_crates', name: 'Cajas de Fruta', category: 'village', widthTiles: 1.4, heightTiles: 1.1, defaultLayer: 'above_floor', defaultShadow: true, tags: ['pueblo', 'fruta', 'manzanas', 'mercado'] },
+
+  // Fences & Enclosures
+  { id: 'fence_wood_straight', name: 'Valla Madera (2m)', category: 'fences', widthTiles: 2.0, heightTiles: 0.42, defaultLayer: 'above_floor', defaultShadow: true, tags: ['valla', 'cerca', 'madera', 'pueblo'] },
+  { id: 'fence_wood_short', name: 'Valla Madera (1m)', category: 'fences', widthTiles: 1.0, heightTiles: 0.42, defaultLayer: 'above_floor', defaultShadow: true, tags: ['valla', 'cerca', 'madera'] },
+  { id: 'fence_wood_corner', name: 'Valla Esquina', category: 'fences', widthTiles: 1.1, heightTiles: 1.1, defaultLayer: 'above_floor', defaultShadow: true, tags: ['valla', 'esquina', 'cerca'] },
+  { id: 'fence_gate_wood', name: 'Portón de Valla', category: 'fences', widthTiles: 1.6, heightTiles: 0.55, defaultLayer: 'above_floor', defaultShadow: true, tags: ['valla', 'puerta', 'porton', 'corral'] },
+  { id: 'fence_picket_white', name: 'Valla Estacas', category: 'fences', widthTiles: 2.0, heightTiles: 0.42, defaultLayer: 'above_floor', defaultShadow: true, tags: ['valla', 'estacas', 'jardin', 'pueblo'] },
+  { id: 'fence_iron_straight', name: 'Verja Hierro', category: 'fences', widthTiles: 2.0, heightTiles: 0.42, defaultLayer: 'above_floor', defaultShadow: true, tags: ['valla', 'verja', 'hierro', 'cementerio'] },
+  { id: 'fence_iron_gate', name: 'Cancela Hierro', category: 'fences', widthTiles: 1.8, heightTiles: 0.55, defaultLayer: 'above_floor', defaultShadow: true, tags: ['valla', 'verja', 'puerta', 'cancela'] },
+  { id: 'fence_palisade_logs', name: 'Empalizada Troncos', category: 'fences', widthTiles: 2.0, heightTiles: 0.5, defaultLayer: 'above_walls', defaultShadow: true, tags: ['valla', 'empalizada', 'troncos', 'fuerte'] },
+  { id: 'fence_rope_posts', name: 'Postes con Cuerda', category: 'fences', widthTiles: 2.0, heightTiles: 0.42, defaultLayer: 'above_floor', defaultShadow: true, tags: ['valla', 'cuerda', 'muelle', 'postes'] },
+  { id: 'hitching_post', name: 'Atadero Caballos', category: 'fences', widthTiles: 1.6, heightTiles: 0.5, defaultLayer: 'above_floor', defaultShadow: true, tags: ['valla', 'caballos', 'atadero', 'posada'] },
+
+  // Animals & Creatures
+  { id: 'horse_brown', name: 'Caballo Castaño', category: 'animals', widthTiles: 1.1, heightTiles: 2.1, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'caballo', 'montura', 'establo'] },
+  { id: 'horse_white', name: 'Caballo Blanco', category: 'animals', widthTiles: 1.1, heightTiles: 2.1, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'caballo', 'blanco', 'montura'] },
+  { id: 'draft_mule', name: 'Mula de Carga', category: 'animals', widthTiles: 1.2, heightTiles: 2.0, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'mula', 'burro', 'carga'] },
+  { id: 'cow_spotted', name: 'Vaca Lechera', category: 'animals', widthTiles: 1.2, heightTiles: 1.9, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'vaca', 'ganado', 'granja'] },
+  { id: 'pig_pink', name: 'Cerdo', category: 'animals', widthTiles: 0.9, heightTiles: 1.35, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'cerdo', 'puerco', 'granja'] },
+  { id: 'sheep_woolly', name: 'Oveja', category: 'animals', widthTiles: 0.95, heightTiles: 1.35, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'oveja', 'rebano', 'granja'] },
+  { id: 'goat_horned', name: 'Cabra', category: 'animals', widthTiles: 0.85, heightTiles: 1.3, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'cabra', 'monte', 'granja'] },
+  { id: 'chickens_flock', name: 'Gallinas', category: 'animals', widthTiles: 1.1, heightTiles: 1.1, defaultLayer: 'above_floor', defaultShadow: false, tags: ['animal', 'gallina', 'pollo', 'gallo'] },
+  { id: 'dog_hound', name: 'Perro Sabueso', category: 'animals', widthTiles: 0.75, heightTiles: 1.15, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'perro', 'mascota', 'pueblo'] },
+  { id: 'cat_tabby', name: 'Gato Atigrado', category: 'animals', widthTiles: 0.65, heightTiles: 0.9, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'gato', 'felino', 'mascota'] },
+  { id: 'wolf_grey', name: 'Lobo Gris', category: 'animals', widthTiles: 0.85, heightTiles: 1.45, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'lobo', 'bosque', 'bestia'] },
+  { id: 'bear_brown', name: 'Oso Pardo', category: 'animals', widthTiles: 1.35, heightTiles: 1.8, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'oso', 'bosque', 'bestia'] },
+  { id: 'deer_stag', name: 'Ciervo Astado', category: 'animals', widthTiles: 1.15, heightTiles: 1.75, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'ciervo', 'venado', 'bosque'] },
+  { id: 'boar_wild', name: 'Jabalí', category: 'animals', widthTiles: 0.95, heightTiles: 1.4, defaultLayer: 'above_floor', defaultShadow: true, tags: ['animal', 'jabali', 'bosque', 'caza'] },
 
   // Tavern & Kitchen
   { id: 'bar_counter', name: 'Barra Taberna', category: 'tavern', widthTiles: 3.2, heightTiles: 0.9, defaultLayer: 'above_floor', defaultShadow: true, tags: ['barra', 'taberna', 'mostrador'] },
@@ -1066,25 +1131,67 @@ function renderPropSprite(def: PropDefinition): HTMLCanvasElement {
       break;
     }
 
-    case 'bathtub_wood': {
-      ctx.fillStyle = '#6e4929';
-      ctx.strokeStyle = '#26170b';
+    case 'bathtub_wood':
+    case 'bathtub_copper': {
+      const isCopper = def.id === 'bathtub_copper';
+      // Outer rim
+      ctx.fillStyle = isCopper ? '#b86635' : '#6e4929';
+      ctx.strokeStyle = isCopper ? '#381b0a' : '#26170b';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, w * 0.43, h * 0.45, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, w * 0.44, h * 0.46, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = '#4ea6b8';
+      // Iron hoop or copper highlight band
+      ctx.strokeStyle = isCopper ? '#e69d67' : '#3a3e45';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, w * 0.41, h * 0.43, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Warm bathwater gradient
+      const wGrad = ctx.createRadialGradient(cx - 6, cy - 10, 6, cx, cy, h * 0.38);
+      wGrad.addColorStop(0, '#7dd3e8');
+      wGrad.addColorStop(0.65, '#3b95ad');
+      wGrad.addColorStop(1, '#225e70');
+      ctx.fillStyle = wGrad;
+      ctx.strokeStyle = 'rgba(20,40,48,0.5)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.ellipse(cx, cy, w * 0.34, h * 0.37, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
       // Foam bubbles
-      ctx.fillStyle = 'rgba(240,252,255,0.65)';
-      ctx.beginPath();
-      ctx.arc(cx - 8, cy - 16, 8, 0, Math.PI * 2);
-      ctx.arc(cx + 6, cy - 18, 6, 0, Math.PI * 2);
-      ctx.arc(cx + 10, cy + 14, 7, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = 'rgba(244, 253, 255, 0.82)';
+      for (const [bx, by, br] of [
+        [-10, -24, 9],
+        [4, -28, 7],
+        [14, -20, 6],
+        [-14, 18, 8],
+        [-3, 24, 6],
+        [10, 16, 7],
+      ]) {
+        ctx.beginPath();
+        ctx.arc(cx + bx, cy + by, br, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (isCopper) {
+        // Brass faucet at top end
+        ctx.fillStyle = '#e0b858';
+        ctx.strokeStyle = '#3b2b0a';
+        ctx.lineWidth = 1.8;
+        ctx.fillRect(cx - 10, 6, 20, 8);
+        ctx.strokeRect(cx - 10, 6, 20, 8);
+        ctx.fillRect(cx - 3, 12, 6, 12);
+      } else {
+        // Bath caddy plank & soap bar across lower third
+        ctx.fillStyle = '#8c6239';
+        ctx.strokeStyle = '#29180b';
+        ctx.lineWidth = 2;
+        ctx.fillRect(cx - w * 0.42, cy + 8, w * 0.84, 13);
+        ctx.strokeRect(cx - w * 0.42, cy + 8, w * 0.84, 13);
+        ctx.fillStyle = '#f5d0c5';
+        ctx.fillRect(cx + 6, cy + 10, 12, 8);
+      }
       break;
     }
 
@@ -1271,21 +1378,149 @@ function renderPropSprite(def: PropDefinition): HTMLCanvasElement {
     }
 
     case 'rug_bear': {
-      ctx.fillStyle = '#5c3d28';
-      ctx.strokeStyle = '#291a10';
-      ctx.lineWidth = 2.5;
+      // Claws protruding from the 4 paws
+      const drawClaws = (px: number, py: number, baseAngle: number) => {
+        ctx.fillStyle = '#ede2cc';
+        ctx.strokeStyle = '#2e2014';
+        ctx.lineWidth = 1.4;
+        for (let i = -1.5; i <= 1.5; i += 1) {
+          const a = baseAngle + i * 0.24;
+          ctx.save();
+          ctx.translate(px + Math.cos(a) * 12, py + Math.sin(a) * 12);
+          ctx.rotate(a);
+          ctx.beginPath();
+          ctx.moveTo(-2, -3);
+          ctx.lineTo(10, 0);
+          ctx.lineTo(-2, 3);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+      };
+
+      const flX = w * 0.17;
+      const flY = h * 0.31;
+      const frX = w * 0.83;
+      const frY = h * 0.31;
+      const rlX = w * 0.19;
+      const rlY = h * 0.8;
+      const rrX = w * 0.81;
+      const rrY = h * 0.8;
+
+      drawClaws(flX, flY, -Math.PI * 0.78);
+      drawClaws(frX, frY, -Math.PI * 0.22);
+      drawClaws(rlX, rlY, Math.PI * 0.78);
+      drawClaws(rrX, rrY, Math.PI * 0.22);
+
+      // Continuous organic splayed bearskin pelt silhouette
+      const peltGrad = ctx.createRadialGradient(cx, cy + 10, 12, cx, cy + 10, w * 0.48);
+      peltGrad.addColorStop(0, '#4a2c18');
+      peltGrad.addColorStop(0.45, '#6e4529');
+      peltGrad.addColorStop(1, '#57361f');
+      ctx.fillStyle = peltGrad;
+      ctx.strokeStyle = '#22130a';
+      ctx.lineWidth = 3;
+      ctx.lineJoin = 'round';
+
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 6, w * 0.34, h * 0.36, 0, 0, Math.PI * 2);
+      // Start left side of neck
+      ctx.moveTo(cx - 20, h * 0.2);
+      // Out to front-left shoulder & paw
+      ctx.quadraticCurveTo(w * 0.28, h * 0.2, flX - 8, flY - 8);
+      ctx.arc(flX, flY, 15, -Math.PI * 0.75, Math.PI * 0.45, true);
+      // Curve inward to left waist
+      ctx.quadraticCurveTo(w * 0.33, h * 0.48, w * 0.31, h * 0.58);
+      // Out to rear-left leg & paw
+      ctx.quadraticCurveTo(w * 0.24, h * 0.68, rlX - 10, rlY - 6);
+      ctx.arc(rlX, rlY, 15, -Math.PI * 0.85, Math.PI * 0.35, true);
+      // Curve into rump & stubby bear tail
+      ctx.quadraticCurveTo(w * 0.36, h * 0.84, cx - 12, h * 0.89);
+      ctx.quadraticCurveTo(cx, h * 0.96, cx + 12, h * 0.89);
+      // Out to rear-right leg & paw
+      ctx.quadraticCurveTo(w * 0.64, h * 0.84, rrX - 10, rrY + 10);
+      ctx.arc(rrX, rrY, 15, Math.PI * 0.65, -Math.PI * 0.15, true);
+      // Curve inward to right waist
+      ctx.quadraticCurveTo(w * 0.76, h * 0.68, w * 0.69, h * 0.58);
+      ctx.quadraticCurveTo(w * 0.67, h * 0.48, frX - 8, frY + 12);
+      // Out to front-right paw & back to right neck
+      ctx.arc(frX, frY, 15, Math.PI * 0.55, -Math.PI * 0.25, true);
+      ctx.quadraticCurveTo(w * 0.72, h * 0.2, cx + 20, h * 0.2);
+      ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // Head & limbs
+
+      // Darker dorsal fur ridge & fur texture strokes
+      ctx.strokeStyle = 'rgba(36, 20, 10, 0.48)';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.arc(cx, 22, 18, 0, Math.PI * 2);
-      ctx.arc(22, 34, 12, 0, Math.PI * 2);
-      ctx.arc(w - 22, 34, 12, 0, Math.PI * 2);
-      ctx.arc(24, h - 24, 12, 0, Math.PI * 2);
-      ctx.arc(w - 24, h - 24, 12, 0, Math.PI * 2);
+      ctx.moveTo(cx, h * 0.24);
+      ctx.lineTo(cx, h * 0.86);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(156, 108, 72, 0.28)';
+      ctx.lineWidth = 2;
+      for (let y = h * 0.3; y <= h * 0.8; y += 16) {
+        ctx.beginPath();
+        ctx.moveTo(cx - 6, y);
+        ctx.lineTo(cx - 28, y + 6);
+        ctx.moveTo(cx + 6, y);
+        ctx.lineTo(cx + 28, y + 6);
+        ctx.stroke();
+      }
+
+      // Bear ears (separate subpaths!)
+      const headY = h * 0.17;
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = '#4f301b';
+        ctx.strokeStyle = '#211209';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(cx + side * 21, headY + 5, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#2e1a0d';
+        ctx.beginPath();
+        ctx.arc(cx + side * 21, headY + 5, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Bear skull / head
+      ctx.fillStyle = '#694126';
+      ctx.strokeStyle = '#211209';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.ellipse(cx, headY, 24, 21, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
+
+      // Tan muzzle / snout pointing forward
+      ctx.fillStyle = '#a67d58';
+      ctx.strokeStyle = '#2e1b0e';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(cx, headY - 13, 11, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Black nose tip
+      ctx.fillStyle = '#171210';
+      ctx.beginPath();
+      ctx.ellipse(cx, headY - 21, 6, 4.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Eyes
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = '#140e0a';
+        ctx.beginPath();
+        ctx.arc(cx + side * 9.5, headY - 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.beginPath();
+        ctx.arc(cx + side * 9.5 - 0.8, headY - 5.8, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
       break;
     }
 
@@ -2233,6 +2468,1651 @@ function renderPropSprite(def: PropDefinition): HTMLCanvasElement {
         ctx.arc(18 + i * 20, cy, 6, 0, Math.PI * 2);
         ctx.fill();
       }
+      break;
+    }
+
+    // --- Bathroom & Washroom ---
+    case 'bathtub_marble': {
+      ctx.fillStyle = '#e8e2d5';
+      ctx.strokeStyle = '#3d3930';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(8, 8, w - 16, h - 16, 18);
+      ctx.fill();
+      ctx.stroke();
+      // Gold trim inlay
+      ctx.strokeStyle = '#d4af53';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(14, 14, w - 28, h - 28, 14);
+      ctx.stroke();
+      // Clear azure water
+      const wg = ctx.createRadialGradient(cx, cy, 8, cx, cy, h * 0.38);
+      wg.addColorStop(0, '#8ce6f5');
+      wg.addColorStop(0.7, '#3ea4bd');
+      wg.addColorStop(1, '#23697d');
+      ctx.fillStyle = wg;
+      ctx.beginPath();
+      ctx.roundRect(22, 24, w - 44, h - 48, 22);
+      ctx.fill();
+      // Floating rose petals & foam
+      ctx.fillStyle = '#e11d48';
+      for (const [px, py] of [
+        [-16, -24],
+        [14, -18],
+        [-10, 22],
+        [18, 28],
+        [4, 2],
+      ]) {
+        ctx.beginPath();
+        ctx.ellipse(cx + px, cy + py, 4.5, 3, px * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Golden spout at top
+      ctx.fillStyle = '#e0b853';
+      ctx.strokeStyle = '#4a380c';
+      ctx.lineWidth = 1.8;
+      ctx.fillRect(cx - 14, 10, 28, 8);
+      ctx.strokeRect(cx - 14, 10, 28, 8);
+      ctx.fillRect(cx - 4, 16, 8, 12);
+      break;
+    }
+
+    case 'privy_wood': {
+      // Wooden bench box
+      ctx.fillStyle = '#734b28';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(8, 10, w - 16, h - 18, 5);
+      ctx.fill();
+      ctx.stroke();
+      // Plank lines
+      ctx.strokeStyle = 'rgba(32,18,8,0.38)';
+      ctx.lineWidth = 1.5;
+      for (let x = 22; x < w - 16; x += 18) {
+        ctx.beginPath();
+        ctx.moveTo(x, 12);
+        ctx.lineTo(x, h - 10);
+        ctx.stroke();
+      }
+      // Hinged wooden backrest / lid at top
+      ctx.fillStyle = '#57371c';
+      ctx.fillRect(12, 8, w - 24, 14);
+      ctx.strokeRect(12, 8, w - 24, 14);
+      // Beveled seat ring & dark pit
+      ctx.fillStyle = '#8c5e35';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy + 6, w * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#14100d';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 6, w * 0.17, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'toilet_porcelain': {
+      // Oval ceramic bowl
+      ctx.fillStyle = '#f0ece1';
+      ctx.strokeStyle = '#3c3a35';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 10, w * 0.34, h * 0.33, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Water inside bowl
+      ctx.fillStyle = '#7dd3e8';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 12, w * 0.17, h * 0.17, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Carved wood seat rim
+      ctx.strokeStyle = '#6e4523';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 10, w * 0.26, h * 0.25, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Rear porcelain cistern tank
+      ctx.fillStyle = '#f7f4eb';
+      ctx.strokeStyle = '#3c3a35';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.roundRect(12, 8, w - 24, 24, 5);
+      ctx.fill();
+      ctx.stroke();
+      // Brass flush lever
+      ctx.fillStyle = '#d9b24c';
+      ctx.fillRect(w - 22, 14, 10, 5);
+      break;
+    }
+
+    case 'washbasin_stand': {
+      ctx.fillStyle = '#784f2b';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(8, 10, w - 16, h - 20, 5);
+      ctx.fill();
+      ctx.stroke();
+      // Ceramic washbowl with water
+      ctx.fillStyle = '#f2eee4';
+      ctx.strokeStyle = '#47433c';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx - 10, cy, h * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#6ec8de';
+      ctx.beginPath();
+      ctx.arc(cx - 10, cy, h * 0.21, 0, Math.PI * 2);
+      ctx.fill();
+      // Ceramic pitcher & soap
+      ctx.fillStyle = '#e8e1cf';
+      ctx.beginPath();
+      ctx.arc(cx + 24, cy - 6, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#f4b8b0';
+      ctx.fillRect(cx + 18, cy + 10, 12, 8);
+      break;
+    }
+
+    case 'sink_stone': {
+      ctx.fillStyle = '#8f8a80';
+      ctx.strokeStyle = '#2c2a26';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(6, 8, w - 12, h - 16, 5);
+      ctx.fill();
+      ctx.stroke();
+      // Recessed stone water basin
+      ctx.fillStyle = '#53aec4';
+      ctx.strokeStyle = '#2c2a26';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(18, 22, w - 36, h - 38, 8);
+      ctx.fill();
+      ctx.stroke();
+      // Brass faucet & handles
+      ctx.fillStyle = '#deb552';
+      ctx.fillRect(cx - 3, 11, 6, 15);
+      ctx.beginPath();
+      ctx.arc(cx - 14, 15, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx + 14, 15, 4, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'vanity_mirror': {
+      // Wooden dressing table
+      ctx.fillStyle = '#734928';
+      ctx.strokeStyle = '#241408';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(8, 14, w - 16, h - 24, 8);
+      ctx.fill();
+      ctx.stroke();
+      // Framed mirror strip at back
+      ctx.fillStyle = '#b58d3d';
+      ctx.fillRect(18, 8, w - 36, 13);
+      ctx.strokeRect(18, 8, w - 36, 13);
+      ctx.fillStyle = '#a5e2f2';
+      ctx.fillRect(24, 11, w - 48, 7);
+      // Perfume bottles & brush
+      ctx.fillStyle = '#e11d48';
+      ctx.beginPath();
+      ctx.arc(cx - 26, cy + 6, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#a855f7';
+      ctx.beginPath();
+      ctx.arc(cx - 12, cy + 10, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#d4a64a';
+      ctx.beginPath();
+      ctx.ellipse(cx + 22, cy + 8, 10, 6, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'folding_screen': {
+      // 3-panel zig-zag wooden & silk privacy screen
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      const pts: [number, number][] = [
+        [10, h - 14],
+        [w * 0.36, 14],
+        [w * 0.64, h - 14],
+        [w - 10, 14],
+      ];
+      ctx.strokeStyle = '#241409';
+      ctx.lineWidth = 14;
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#d9cfb4';
+      ctx.lineWidth = 8;
+      ctx.stroke();
+
+      ctx.strokeStyle = '#5c3a1e';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      for (const [px, py] of pts) {
+        ctx.fillStyle = '#4a2e16';
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+
+    case 'towel_rack': {
+      ctx.fillStyle = '#5e3c20';
+      ctx.strokeStyle = '#211308';
+      ctx.lineWidth = 2.5;
+      ctx.fillRect(8, cy - 5, w - 16, 10);
+      ctx.strokeRect(8, cy - 5, w - 16, 10);
+      // Folded colorful towels draped over rail
+      const towels: [number, number, string][] = [
+        [16, 26, '#f2eee4'],
+        [48, 28, '#3b95ad'],
+        [78, 22, '#c9644a'],
+      ];
+      for (const [tx, tw, col] of towels) {
+        if (tx + tw > w - 10) continue;
+        ctx.fillStyle = col;
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+        ctx.lineWidth = 1.8;
+        ctx.fillRect(tx, cy - 12, tw, 24);
+        ctx.strokeRect(tx, cy - 12, tw, 24);
+      }
+      break;
+    }
+
+    case 'laundry_tub': {
+      const r = Math.min(w, h) * 0.43;
+      ctx.fillStyle = '#734b28';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#6ec6db';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.78, 0, Math.PI * 2);
+      ctx.fill();
+      // Soapy foam
+      ctx.fillStyle = 'rgba(248,254,255,0.85)';
+      for (const [dx, dy, sr] of [
+        [-10, -8, 10],
+        [8, -12, 8],
+        [-6, 10, 9],
+      ]) {
+        ctx.beginPath();
+        ctx.arc(cx + dx, cy + dy, sr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Washboard leaning out
+      ctx.save();
+      ctx.translate(cx + 8, cy + 4);
+      ctx.rotate(0.45);
+      ctx.fillStyle = '#8c6239';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 2;
+      ctx.fillRect(-14, -22, 28, 38);
+      ctx.strokeRect(-14, -22, 28, 38);
+      ctx.fillStyle = '#aeb6bf';
+      ctx.fillRect(-10, -14, 20, 22);
+      ctx.restore();
+      break;
+    }
+
+    case 'chamber_pot': {
+      // Ceramic chamber pot on left
+      ctx.fillStyle = '#ebe5d8';
+      ctx.strokeStyle = '#3b3730';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx - 14, cy + 2, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#cfc7b6';
+      ctx.beginPath();
+      ctx.arc(cx - 14, cy + 2, 10, 0, Math.PI * 2);
+      ctx.fill();
+      // Wooden water bucket & sponge on right
+      ctx.fillStyle = '#734b28';
+      ctx.strokeStyle = '#241509';
+      ctx.beginPath();
+      ctx.arc(cx + 16, cy - 2, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#4fa8bd';
+      ctx.beginPath();
+      ctx.arc(cx + 16, cy - 2, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#eab308';
+      ctx.beginPath();
+      ctx.arc(cx + 6, cy + 16, 6, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'sauna_brazier': {
+      const r = Math.min(w, h) * 0.43;
+      ctx.fillStyle = '#3d4148';
+      ctx.strokeStyle = '#16181c';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Warm glowing ember bed beneath stones
+      const eg = ctx.createRadialGradient(cx, cy, 4, cx, cy, r * 0.8);
+      eg.addColorStop(0, '#ff9d2e');
+      eg.addColorStop(1, '#2b221e');
+      ctx.fillStyle = eg;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      // Hot river cobbles
+      for (const [dx, dy, sr] of [
+        [-14, -12, 11],
+        [12, -14, 10],
+        [-16, 10, 10],
+        [14, 12, 11],
+        [0, -2, 12],
+        [-2, 16, 9],
+      ]) {
+        ctx.fillStyle = '#5c5852';
+        ctx.strokeStyle = '#262320';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx + dx, cy + dy, sr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      break;
+    }
+
+    // --- Village & Farm ---
+    case 'village_well_roofed': {
+      const r = Math.min(w, h) * 0.4;
+      // Cobble well base
+      ctx.fillStyle = '#7e7970';
+      ctx.strokeStyle = '#262420';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#1d4c5e';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.65, 0, Math.PI * 2);
+      ctx.fill();
+      // Wooden bucket inside
+      ctx.fillStyle = '#7c512d';
+      ctx.beginPath();
+      ctx.arc(cx + 10, cy + 8, 9, 0, Math.PI * 2);
+      ctx.fill();
+      // Overhead pitched shingle roof canopy
+      ctx.fillStyle = '#754829';
+      ctx.strokeStyle = '#241409';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(12, cy - 22, w - 24, 44, 4);
+      ctx.fill();
+      ctx.stroke();
+      // Ridge beam
+      ctx.fillStyle = '#99643c';
+      ctx.fillRect(10, cy - 4, w - 20, 8);
+      ctx.strokeRect(10, cy - 4, w - 20, 8);
+      break;
+    }
+
+    case 'notice_board': {
+      // Shingle roof beam + 2 posts
+      ctx.fillStyle = '#5e3c20';
+      ctx.strokeStyle = '#211308';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(10, cy - 10, w - 20, 20, 4);
+      ctx.fill();
+      ctx.stroke();
+      // Posts at ends
+      ctx.fillStyle = '#472c16';
+      ctx.beginPath();
+      ctx.arc(16, cy, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(w - 16, cy, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Pinned parchment flyers along front edge
+      for (const [px, col] of [
+        [34, '#f5ecd4'],
+        [62, '#efe0b9'],
+        [92, '#f7f2e4'],
+        [114, '#f2d9c9'],
+      ] as [number, string][]) {
+        if (px > w - 28) continue;
+        ctx.fillStyle = col;
+        ctx.fillRect(px, cy + 7, 16, 6);
+      }
+      break;
+    }
+
+    case 'street_lamppost': {
+      // Warm outer lantern glow
+      const g = ctx.createRadialGradient(cx + 8, cy, 2, cx + 8, cy, w * 0.44);
+      g.addColorStop(0, '#fff7bd');
+      g.addColorStop(0.45, 'rgba(255, 174, 56, 0.7)');
+      g.addColorStop(1, 'rgba(255, 140, 20, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx + 8, cy, w * 0.44, 0, Math.PI * 2);
+      ctx.fill();
+      // Iron cross-arm & base post
+      ctx.strokeStyle = '#1f242d';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 12, cy);
+      ctx.lineTo(cx + 14, cy);
+      ctx.stroke();
+      ctx.fillStyle = '#2f3542';
+      ctx.strokeStyle = '#12151c';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx - 10, cy, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Glowing lantern head
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(cx + 6, cy - 7, 14, 14);
+      ctx.strokeRect(cx + 6, cy - 7, 14, 14);
+      break;
+    }
+
+    case 'water_trough': {
+      ctx.fillStyle = '#6e4929';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(8, 12, w - 16, h - 24, 5);
+      ctx.fill();
+      ctx.stroke();
+      const wg = ctx.createLinearGradient(0, 18, 0, h - 18);
+      wg.addColorStop(0, '#388ea6');
+      wg.addColorStop(0.5, '#64bed4');
+      wg.addColorStop(1, '#2b6f82');
+      ctx.fillStyle = wg;
+      ctx.fillRect(16, 20, w - 32, h - 40);
+      // Iron end brackets
+      ctx.fillStyle = '#3b3f47';
+      ctx.fillRect(8, 12, 8, h - 24);
+      ctx.fillRect(w - 16, 12, 8, h - 24);
+      break;
+    }
+
+    case 'hay_bale_round': {
+      const r = Math.min(w, h) * 0.43;
+      const hg = ctx.createRadialGradient(cx - 6, cy - 6, 4, cx, cy, r);
+      hg.addColorStop(0, '#ebd078');
+      hg.addColorStop(0.7, '#cfa848');
+      hg.addColorStop(1, '#997528');
+      ctx.fillStyle = hg;
+      ctx.strokeStyle = '#47340d';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Spiral straw rings & twine
+      ctx.strokeStyle = 'rgba(92, 65, 15, 0.45)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.65, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.32, 0, Math.PI * 2);
+      ctx.stroke();
+      break;
+    }
+
+    case 'hay_pile': {
+      const tufts = [
+        [-18, -8, 34, '#c79e3e'],
+        [18, -6, 32, '#cfa848'],
+        [-10, 14, 34, '#b88f32'],
+        [16, 14, 30, '#d9b554'],
+        [0, 0, 38, '#e8c96b'],
+      ] as [number, number, number, string][];
+      for (const [dx, dy, tr, col] of tufts) {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(cx + dx, cy + dy, tr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Stray golden stalks
+      ctx.strokeStyle = '#8f6b1e';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * 14, cy + Math.sin(a) * 14);
+        ctx.lineTo(cx + Math.cos(a + 0.2) * 44, cy + Math.sin(a + 0.2) * 38);
+        ctx.stroke();
+      }
+      // Pitchfork resting across haystack
+      ctx.strokeStyle = '#5c3b1e';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx - 38, cy + 28);
+      ctx.lineTo(cx + 20, cy - 16);
+      ctx.stroke();
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2.5;
+      for (const off of [-6, 0, 6]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + 18 + off * 0.6, cy - 14 + off * 0.8);
+        ctx.lineTo(cx + 32 + off * 0.6, cy - 25 + off * 0.8);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'wheelbarrow': {
+      // Front wheel
+      ctx.fillStyle = '#3d2817';
+      ctx.strokeStyle = '#1a1008';
+      ctx.lineWidth = 2;
+      ctx.fillRect(cx - 5, 8, 10, 26);
+      ctx.strokeRect(cx - 5, 8, 10, 26);
+      // Wooden handles extending to bottom
+      ctx.strokeStyle = '#6e4726';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, 24);
+      ctx.lineTo(18, h - 10);
+      ctx.moveTo(cx + 6, 24);
+      ctx.lineTo(w - 18, h - 10);
+      ctx.stroke();
+      // Trapezoidal tray
+      ctx.fillStyle = '#875932';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.moveTo(cx - 18, 30);
+      ctx.lineTo(cx + 18, 30);
+      ctx.lineTo(w - 14, h - 34);
+      ctx.lineTo(14, h - 34);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Soil / vegetables inside
+      ctx.fillStyle = '#543d28';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 2, 18, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#65a30d';
+      ctx.beginPath();
+      ctx.arc(cx - 6, cy - 4, 7, 0, Math.PI * 2);
+      ctx.arc(cx + 7, cy + 6, 6, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'woodpile_logs': {
+      const logs = [
+        [14, 16, w - 28, 16],
+        [18, 32, w - 36, 16],
+        [12, 48, w - 24, 16],
+        [20, 24, w - 40, 15],
+        [16, 40, w - 32, 15],
+      ];
+      for (const [lx, ly, lw, lh] of logs) {
+        if (ly + lh > h - 8) continue;
+        ctx.fillStyle = '#6b4526';
+        ctx.strokeStyle = '#241509';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.roundRect(lx, ly, lw, lh, 6);
+        ctx.fill();
+        ctx.stroke();
+        // Pale cut log ends
+        ctx.fillStyle = '#cfa976';
+        ctx.beginPath();
+        ctx.arc(lx + 6, ly + lh / 2, lh * 0.36, 0, Math.PI * 2);
+        ctx.arc(lx + lw - 6, ly + lh / 2, lh * 0.36, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+
+    case 'chopping_block': {
+      const r = Math.min(w, h) * 0.38;
+      // Scattered wood chips
+      ctx.fillStyle = '#cfa976';
+      for (const [dx, dy] of [
+        [-28, 18],
+        [26, 20],
+        [-22, -24],
+        [24, -18],
+      ]) {
+        ctx.fillRect(cx + dx, cy + dy, 8, 4);
+      }
+      // Stump
+      ctx.fillStyle = '#5e3e24';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#c49d68';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.78, 0, Math.PI * 2);
+      ctx.fill();
+      // Embedded axe
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(-0.55);
+      ctx.fillStyle = '#734926';
+      ctx.strokeStyle = '#1f1208';
+      ctx.lineWidth = 2;
+      ctx.fillRect(-4, -6, 8, 38);
+      ctx.strokeRect(-4, -6, 8, 38);
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(-14, -14);
+      ctx.lineTo(12, -10);
+      ctx.lineTo(12, 2);
+      ctx.lineTo(-14, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+
+    case 'vegetable_patch': {
+      // Tilled soil bed
+      ctx.fillStyle = '#4a3522';
+      ctx.strokeStyle = '#261a10';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(8, 8, w - 16, h - 16, 8);
+      ctx.fill();
+      ctx.stroke();
+      // Furrow rows & crops
+      const rows = 3;
+      for (let r = 0; r < rows; r++) {
+        const ry = 28 + r * ((h - 56) / (rows - 1));
+        ctx.strokeStyle = '#362516';
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(22, ry);
+        ctx.lineTo(w - 22, ry);
+        ctx.stroke();
+
+        for (let x = 30; x <= w - 30; x += 28) {
+          ctx.fillStyle = r === 1 ? '#ea580c' : '#4d7c0f';
+          ctx.strokeStyle = '#1a2e05';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc(x, ry, r === 1 ? 9 : 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#84cc16';
+          ctx.beginPath();
+          ctx.arc(x - 2, ry - 2, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+    }
+
+    case 'scarecrow': {
+      // Cross arms pole
+      ctx.strokeStyle = '#5c3c20';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(12, cy);
+      ctx.lineTo(w - 12, cy);
+      ctx.stroke();
+      // Straw cuffs at ends
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(8, cy - 6);
+      ctx.lineTo(16, cy + 6);
+      ctx.moveTo(w - 8, cy - 6);
+      ctx.lineTo(w - 16, cy + 6);
+      ctx.stroke();
+      // Burlap shoulders
+      ctx.fillStyle = '#8a5a36';
+      ctx.strokeStyle = '#29180b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, w * 0.28, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Wide straw hat at center
+      ctx.fillStyle = '#d9b455';
+      ctx.strokeStyle = '#47350d';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = '#991b1b';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 11, 0, Math.PI * 2);
+      ctx.stroke();
+      break;
+    }
+
+    case 'clothesline': {
+      // Rope line
+      ctx.strokeStyle = '#c2b28f';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(14, cy);
+      ctx.lineTo(w - 14, cy);
+      ctx.stroke();
+      // Billowing hung garments
+      const clothes: [number, number, string][] = [
+        [32, 34, '#f8fafc'],
+        [76, 30, '#38bdf8'],
+        [118, 36, '#f43f5e'],
+        [164, 30, '#fde047'],
+      ];
+      for (const [lx, lw, col] of clothes) {
+        if (lx + lw > w - 20) continue;
+        ctx.fillStyle = col;
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(lx, cy);
+        ctx.lineTo(lx + lw, cy);
+        ctx.quadraticCurveTo(lx + lw + 6, cy + 18, lx + lw - 4, cy + 20);
+        ctx.lineTo(lx + 4, cy + 18);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+      // End wooden poles
+      for (const px of [14, w - 14]) {
+        ctx.fillStyle = '#5c3c20';
+        ctx.strokeStyle = '#211308';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(px, cy, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'chicken_coop': {
+      // Cleated ramp sticking out bottom
+      ctx.fillStyle = '#8c6239';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 2;
+      ctx.fillRect(cx - 12, h - 34, 24, 28);
+      ctx.strokeRect(cx - 12, h - 34, 24, 28);
+      // Pitched wooden roof
+      ctx.fillStyle = '#7c4a27';
+      ctx.strokeStyle = '#241409';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(12, 10, w - 24, h - 36, 5);
+      ctx.fill();
+      ctx.stroke();
+      // Roof ridge & plank lines
+      ctx.fillStyle = '#5c3419';
+      ctx.fillRect(10, (h - 26) / 2 - 4, w - 20, 8);
+      // Straw nest box on side
+      ctx.fillStyle = '#e0bd5a';
+      ctx.fillRect(w - 22, 24, 14, 28);
+      ctx.strokeRect(w - 22, 24, 14, 28);
+      break;
+    }
+
+    case 'doghouse': {
+      // White bone in front
+      ctx.fillStyle = '#f5f2eb';
+      ctx.strokeStyle = '#47433b';
+      ctx.lineWidth = 1.6;
+      ctx.fillRect(cx + 12, h - 20, 16, 5);
+      ctx.strokeRect(cx + 12, h - 20, 16, 5);
+      // Pitched terracotta shingle roof
+      ctx.fillStyle = '#9c3b2b';
+      ctx.strokeStyle = '#2b120d';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(12, 12, w - 24, h - 32, 5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#73281c';
+      ctx.fillRect(cx - 4, 10, 8, h - 28);
+      break;
+    }
+
+    case 'beehive_skep': {
+      const r = Math.min(w, h) * 0.42;
+      // Wooden base square
+      ctx.fillStyle = '#6e4929';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 2.5;
+      ctx.fillRect(10, 10, w - 20, h - 20);
+      ctx.strokeRect(10, 10, w - 20, h - 20);
+      // Golden woven straw dome
+      ctx.fillStyle = '#deb549';
+      ctx.strokeStyle = '#4a360b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.85, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      for (const rr of [0.6, 0.35]) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * rr, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#6e4910';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'pillory_stocks': {
+      // Wooden platform
+      ctx.fillStyle = '#6b4728';
+      ctx.strokeStyle = '#241409';
+      ctx.lineWidth = 2.5;
+      ctx.fillRect(10, 12, w - 20, h - 24);
+      ctx.strokeRect(10, 12, w - 20, h - 24);
+      // Heavy top beam with head & hand holes
+      ctx.fillStyle = '#8c5e35';
+      ctx.fillRect(8, cy - 8, w - 16, 16);
+      ctx.strokeRect(8, cy - 8, w - 16, 16);
+      ctx.fillStyle = '#1a120b';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+      ctx.arc(cx - 24, cy, 4.5, 0, Math.PI * 2);
+      ctx.arc(cx + 24, cy, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'fruit_crates': {
+      const crates: [number, number, number, string][] = [
+        [10, 12, -0.08, '#dc2626'], // Red apples
+        [cx - 4, 18, 0.1, '#f97316'], // Oranges
+        [24, cy - 2, 0.04, '#65a30d'], // Green pears/cabbages
+      ];
+      for (const [bx, by, rot, fruitCol] of crates) {
+        ctx.save();
+        ctx.translate(bx + 26, by + 22);
+        ctx.rotate(rot);
+        ctx.fillStyle = '#855832';
+        ctx.strokeStyle = '#241509';
+        ctx.lineWidth = 2.5;
+        ctx.fillRect(-26, -20, 52, 40);
+        ctx.strokeRect(-26, -20, 52, 40);
+        for (let fx = -16; fx <= 16; fx += 11) {
+          for (let fy = -10; fy <= 10; fy += 10) {
+            ctx.fillStyle = fruitCol;
+            ctx.beginPath();
+            ctx.arc(fx, fy, 5.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+      break;
+    }
+
+    // --- Fences & Enclosures ---
+    case 'fence_wood_straight':
+    case 'fence_wood_short': {
+      // Horizontal rails
+      ctx.fillStyle = '#8c5e35';
+      ctx.strokeStyle = '#241408';
+      ctx.lineWidth = 2.5;
+      ctx.fillRect(4, cy - 6, w - 8, 12);
+      ctx.strokeRect(4, cy - 6, w - 8, 12);
+      // Square timber posts
+      const posts = def.id === 'fence_wood_short' ? [10, w - 10] : [10, cx, w - 10];
+      for (const px of posts) {
+        ctx.fillStyle = '#633f20';
+        ctx.fillRect(px - 8, cy - 10, 16, 20);
+        ctx.strokeRect(px - 8, cy - 10, 16, 20);
+      }
+      break;
+    }
+
+    case 'fence_wood_corner': {
+      ctx.fillStyle = '#8c5e35';
+      ctx.strokeStyle = '#241408';
+      ctx.lineWidth = 2.5;
+      // Horizontal arm right + vertical arm down from corner (cx, cy)
+      ctx.fillRect(cx - 6, cy - 6, w - cx, 12);
+      ctx.strokeRect(cx - 6, cy - 6, w - cx, 12);
+      ctx.fillRect(cx - 6, cy - 6, 12, h - cy);
+      ctx.strokeRect(cx - 6, cy - 6, 12, h - cy);
+      for (const [px, py] of [
+        [cx, cy],
+        [w - 12, cy],
+        [cx, h - 12],
+      ]) {
+        ctx.fillStyle = '#633f20';
+        ctx.fillRect(px - 9, py - 9, 18, 18);
+        ctx.strokeRect(px - 9, py - 9, 18, 18);
+      }
+      break;
+    }
+
+    case 'fence_gate_wood': {
+      // Swing gate leaf slightly angled
+      ctx.save();
+      ctx.translate(18, cy);
+      ctx.rotate(0.14);
+      ctx.fillStyle = '#996a3e';
+      ctx.strokeStyle = '#241408';
+      ctx.lineWidth = 2.5;
+      ctx.fillRect(0, -5, w - 38, 10);
+      ctx.strokeRect(0, -5, w - 38, 10);
+      // Iron hinge strap
+      ctx.fillStyle = '#3f444d';
+      ctx.fillRect(2, -3, 24, 6);
+      ctx.restore();
+      // Heavy gateposts left & right
+      for (const px of [14, w - 14]) {
+        ctx.fillStyle = '#5c3a1d';
+        ctx.strokeStyle = '#1f1208';
+        ctx.lineWidth = 2.8;
+        ctx.fillRect(px - 10, cy - 11, 20, 22);
+        ctx.strokeRect(px - 10, cy - 11, 20, 22);
+      }
+      break;
+    }
+
+    case 'fence_picket_white': {
+      ctx.fillStyle = '#cfc7b4';
+      ctx.strokeStyle = '#3b352c';
+      ctx.lineWidth = 2;
+      ctx.fillRect(4, cy - 4, w - 8, 8);
+      ctx.strokeRect(4, cy - 4, w - 8, 8);
+      for (let x = 10; x <= w - 10; x += 14) {
+        ctx.fillStyle = '#f2ede1';
+        ctx.fillRect(x - 4, cy - 9, 8, 18);
+        ctx.strokeRect(x - 4, cy - 9, 8, 18);
+      }
+      break;
+    }
+
+    case 'fence_iron_straight': {
+      // Iron rail
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.fillRect(8, cy - 3, w - 16, 6);
+      ctx.strokeRect(8, cy - 3, w - 16, 6);
+      // Forged vertical spear bars
+      for (let x = 26; x <= w - 26; x += 14) {
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.arc(x, cy, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      // Stone end pillars
+      for (const px of [12, w - 12]) {
+        ctx.fillStyle = '#8c877d';
+        ctx.strokeStyle = '#292723';
+        ctx.lineWidth = 2.5;
+        ctx.fillRect(px - 9, cy - 10, 18, 20);
+        ctx.strokeRect(px - 9, cy - 10, 18, 20);
+      }
+      break;
+    }
+
+    case 'fence_iron_gate': {
+      // Double wrought-iron leaves slightly parted
+      for (const side of [-1, 1]) {
+        ctx.save();
+        ctx.translate(side < 0 ? 18 : w - 18, cy);
+        ctx.rotate(side < 0 ? 0.16 : -0.16);
+        const len = cx - 20;
+        ctx.fillStyle = '#334155';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2.5;
+        ctx.fillRect(side < 0 ? 0 : -len, -4, len, 8);
+        ctx.strokeRect(side < 0 ? 0 : -len, -4, len, 8);
+        ctx.restore();
+      }
+      // Stone gate piers with brass finials
+      for (const px of [14, w - 14]) {
+        ctx.fillStyle = '#8c877d';
+        ctx.strokeStyle = '#292723';
+        ctx.lineWidth = 2.5;
+        ctx.fillRect(px - 10, cy - 12, 20, 24);
+        ctx.strokeRect(px - 10, cy - 12, 20, 24);
+        ctx.fillStyle = '#d4af53';
+        ctx.beginPath();
+        ctx.arc(px, cy, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+
+    case 'fence_palisade_logs': {
+      for (let x = 14; x <= w - 14; x += 18) {
+        ctx.fillStyle = '#5e3c20';
+        ctx.strokeStyle = '#211308';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(x, cy, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#c29b65';
+        ctx.beginPath();
+        ctx.arc(x, cy, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+
+    case 'fence_rope_posts': {
+      ctx.strokeStyle = '#bfa675';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(14, cy);
+      ctx.quadraticCurveTo(cx * 0.5 + 7, cy + 7, cx, cy);
+      ctx.quadraticCurveTo(cx * 1.5 - 7, cy + 7, w - 14, cy);
+      ctx.stroke();
+      for (const px of [14, cx, w - 14]) {
+        ctx.fillStyle = '#633f20';
+        ctx.strokeStyle = '#211308';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(px, cy, 8.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'hitching_post': {
+      ctx.fillStyle = '#784e29';
+      ctx.strokeStyle = '#241408';
+      ctx.lineWidth = 2.8;
+      ctx.fillRect(10, cy - 5, w - 20, 10);
+      ctx.strokeRect(10, cy - 5, w - 20, 10);
+      // Iron hitching rings & coiled rope
+      for (const rx of [w * 0.34, w * 0.66]) {
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(rx, cy + 9, 5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      for (const px of [16, w - 16]) {
+        ctx.fillStyle = '#57361a';
+        ctx.strokeStyle = '#1f1208';
+        ctx.fillRect(px - 8, cy - 10, 16, 20);
+        ctx.strokeRect(px - 8, cy - 10, 16, 20);
+      }
+      break;
+    }
+
+    // --- Animals & Creatures (top-down facing -Y / up, rotatable) ---
+    case 'horse_brown':
+    case 'horse_white':
+    case 'draft_mule': {
+      const isWhite = def.id === 'horse_white';
+      const isMule = def.id === 'draft_mule';
+      const coat = isWhite ? '#e5e2dc' : isMule ? '#9c7c58' : '#784726';
+      const mane = isWhite ? '#9ca3af' : '#26170c';
+      const outline = '#1f140b';
+
+      // Flowing tail at bottom
+      ctx.fillStyle = mane;
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, h * 0.78);
+      ctx.quadraticCurveTo(cx - 12, h * 0.92, cx, h - 8);
+      ctx.quadraticCurveTo(cx + 12, h * 0.92, cx + 6, h * 0.78);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Torso / barrel
+      ctx.fillStyle = coat;
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 12, w * 0.3, h * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Saddle or cargo packs
+      if (isMule) {
+        for (const side of [-1, 1]) {
+          ctx.fillStyle = '#b59a6d';
+          ctx.strokeStyle = '#3b2e1b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(cx + side * 22 - 11, cy - 6, 22, 34, 6);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#6b4423';
+        ctx.fillRect(cx - 24, cy + 6, 48, 8);
+      } else {
+        ctx.fillStyle = isWhite ? '#2c4c70' : '#4a2c16';
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(cx - w * 0.24, cy - 4, w * 0.48, 30, 6);
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = '#d4af53';
+        ctx.strokeRect(cx - w * 0.18, cy + 1, w * 0.36, 20);
+      }
+
+      // Neck & head reaching upward
+      ctx.fillStyle = coat;
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(cx - 13, cy - 18);
+      ctx.lineTo(cx - 9, 24);
+      ctx.quadraticCurveTo(cx, 10, cx + 9, 24);
+      ctx.lineTo(cx + 13, cy - 18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Ears (longer for mule!)
+      const earLen = isMule ? 15 : 9;
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = coat;
+        ctx.beginPath();
+        ctx.ellipse(cx + side * 9, 26, 3.8, earLen, side * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // Mane strip along neck
+      ctx.strokeStyle = mane;
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx, 26);
+      ctx.lineTo(cx, cy - 8);
+      ctx.stroke();
+      break;
+    }
+
+    case 'cow_spotted': {
+      // Tail
+      ctx.strokeStyle = '#29221c';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx, h * 0.8);
+      ctx.quadraticCurveTo(cx + 8, h * 0.9, cx + 4, h - 8);
+      ctx.stroke();
+
+      // Plump white body
+      ctx.fillStyle = '#f2ede2';
+      ctx.strokeStyle = '#241e19';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 10, w * 0.34, h * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Spotted patches clipped to body
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 10, w * 0.33, h * 0.29, 0, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.fillStyle = '#332820';
+      ctx.beginPath();
+      ctx.arc(cx - 16, cy - 4, 18, 0, Math.PI * 2);
+      ctx.arc(cx + 18, cy + 16, 20, 0, Math.PI * 2);
+      ctx.arc(cx - 8, cy + 32, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Horns & ears
+      for (const side of [-1, 1]) {
+        ctx.strokeStyle = '#dfd5be';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(cx + side * 12, 32);
+        ctx.quadraticCurveTo(cx + side * 24, 24, cx + side * 20, 14);
+        ctx.stroke();
+
+        ctx.fillStyle = '#332820';
+        ctx.beginPath();
+        ctx.ellipse(cx + side * 16, 36, 7, 4, side * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Cow head & pink muzzle
+      ctx.fillStyle = '#f2ede2';
+      ctx.strokeStyle = '#241e19';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(cx, 32, 14, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#f2b6b6';
+      ctx.beginPath();
+      ctx.ellipse(cx, 19, 10, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+
+    case 'pig_pink': {
+      // Curly pink tail
+      ctx.strokeStyle = '#d98292';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx + 3, h - 14, 5, 0, Math.PI * 1.6);
+      ctx.stroke();
+      // Plump body
+      ctx.fillStyle = '#f0a8b4';
+      ctx.strokeStyle = '#4a252c';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 6, w * 0.35, h * 0.32, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Head, snout & floppy ears
+      ctx.beginPath();
+      ctx.arc(cx, 28, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e38898';
+      ctx.beginPath();
+      ctx.ellipse(cx, 14, 8, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = '#e895a4';
+        ctx.beginPath();
+        ctx.ellipse(cx + side * 12, 26, 7, 4.5, side * -0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'sheep_woolly': {
+      // Fluffy scalloped cream fleece puffs
+      const puffs = [
+        [0, 14, 20],
+        [-12, 4, 16],
+        [12, 4, 16],
+        [-12, 22, 15],
+        [12, 22, 15],
+        [0, -4, 17],
+        [0, 30, 15],
+      ];
+      ctx.fillStyle = '#ede7d8';
+      ctx.strokeStyle = '#3d3932';
+      ctx.lineWidth = 2.2;
+      for (const [dx, dy, pr] of puffs) {
+        ctx.beginPath();
+        ctx.arc(cx + dx, cy + dy, pr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#f7f3e8';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 12, 20, 26, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Dark head & horizontal ears
+      ctx.fillStyle = '#2e2b29';
+      ctx.strokeStyle = '#141210';
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(cx + side * 14, 26, 7, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.ellipse(cx, 24, 10, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+
+    case 'goat_horned': {
+      ctx.fillStyle = '#bfa98e';
+      ctx.strokeStyle = '#2e251c';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 10, w * 0.28, h * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Head
+      ctx.beginPath();
+      ctx.ellipse(cx, 26, 9, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Swept-back curved horns
+      ctx.strokeStyle = '#474038';
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + side * 4, 24);
+        ctx.quadraticCurveTo(cx + side * 16, 30, cx + side * 14, 44);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'chickens_flock': {
+      const birds: [number, number, number, string][] = [
+        [cx - 18, cy - 12, -0.4, '#f5f2eb'],
+        [cx + 18, cy - 4, 0.8, '#9c5a32'],
+        [cx - 4, cy + 18, 2.1, '#d97736'],
+      ];
+      for (const [bx, by, rot, col] of birds) {
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.rotate(rot);
+        // Yellow beak
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.moveTo(-3, -12);
+        ctx.lineTo(0, -18);
+        ctx.lineTo(3, -12);
+        ctx.closePath();
+        ctx.fill();
+        // Plump chicken body
+        ctx.fillStyle = col;
+        ctx.strokeStyle = '#291c12';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 9, 13, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Red comb on head
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.ellipse(0, -8, 3, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      break;
+    }
+
+    case 'dog_hound': {
+      // Wagging tail
+      ctx.strokeStyle = '#7c4d28';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx, h * 0.76);
+      ctx.quadraticCurveTo(cx + 10, h * 0.88, cx + 6, h - 10);
+      ctx.stroke();
+      // Hound body
+      ctx.fillStyle = '#9c6334';
+      ctx.strokeStyle = '#26160a';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 6, w * 0.28, h * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Red collar
+      ctx.strokeStyle = '#b91c1c';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 9, 34);
+      ctx.lineTo(cx + 9, 34);
+      ctx.stroke();
+      // Floppy dark ears & head
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = '#4f2f16';
+        ctx.beginPath();
+        ctx.ellipse(cx + side * 11, 26, 4.5, 8, side * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#9c6334';
+      ctx.strokeStyle = '#26160a';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.ellipse(cx, 23, 9, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#17120e';
+      ctx.beginPath();
+      ctx.arc(cx, 12, 3, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'cat_tabby': {
+      // S-curved feline tail
+      ctx.strokeStyle = '#c26a27';
+      ctx.lineWidth = 4.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx, h * 0.72);
+      ctx.bezierCurveTo(cx + 16, h * 0.82, cx - 10, h * 0.92, cx + 8, h - 8);
+      ctx.stroke();
+      // Sleek orange tabby body
+      ctx.fillStyle = '#d97b29';
+      ctx.strokeStyle = '#2e1808';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 4, w * 0.27, h * 0.26, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Tabby stripes
+      ctx.strokeStyle = '#7c3f10';
+      ctx.lineWidth = 2;
+      for (const sy of [cy - 4, cy + 4, cy + 12]) {
+        ctx.beginPath();
+        ctx.moveTo(cx - 9, sy);
+        ctx.lineTo(cx + 9, sy);
+        ctx.stroke();
+      }
+      // Cat head & pointed ears
+      ctx.fillStyle = '#d97b29';
+      ctx.strokeStyle = '#2e1808';
+      ctx.beginPath();
+      ctx.arc(cx, 22, 9.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + side * 3, 15);
+        ctx.lineTo(cx + side * 10, 10);
+        ctx.lineTo(cx + side * 9, 20);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'wolf_grey': {
+      // Bushy tail
+      ctx.fillStyle = '#525863';
+      ctx.strokeStyle = '#181b20';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.ellipse(cx, h - 22, 7, 16, 0.12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Lean wolf torso
+      ctx.fillStyle = '#6b7280';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 6, w * 0.28, h * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Dark silver dorsal coat
+      ctx.fillStyle = '#374151';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 4, w * 0.16, h * 0.22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Pointed head, snout & ears
+      ctx.fillStyle = '#6b7280';
+      ctx.beginPath();
+      ctx.moveTo(cx - 11, 34);
+      ctx.lineTo(cx, 10);
+      ctx.lineTo(cx + 11, 34);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = '#374151';
+        ctx.beginPath();
+        ctx.arc(cx + side * 8, 32, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+
+    case 'bear_brown': {
+      // Live grizzly bear from above
+      ctx.fillStyle = '#5c3a21';
+      ctx.strokeStyle = '#1f1208';
+      ctx.lineWidth = 3;
+      // Heavy body & broad shoulders
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 12, w * 0.36, h * 0.33, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 12, w * 0.38, h * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Round ears
+      for (const side of [-1, 1]) {
+        ctx.fillStyle = '#472b17';
+        ctx.beginPath();
+        ctx.arc(cx + side * 18, 34, 7.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      // Bear head & tan muzzle
+      ctx.fillStyle = '#694226';
+      ctx.beginPath();
+      ctx.ellipse(cx, 30, 19, 17, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#a67c56';
+      ctx.beginPath();
+      ctx.ellipse(cx, 16, 9, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#140f0c';
+      ctx.beginPath();
+      ctx.arc(cx, 10, 4, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'deer_stag': {
+      // White-tipped tail
+      ctx.fillStyle = '#f5f0e6';
+      ctx.beginPath();
+      ctx.ellipse(cx, h - 14, 5, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Reddish-fawn body
+      ctx.fillStyle = '#9c6238';
+      ctx.strokeStyle = '#29170b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 16, w * 0.27, h * 0.27, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Branching antlers!
+      ctx.strokeStyle = '#d6c7a9';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + side * 5, 34);
+        ctx.quadraticCurveTo(cx + side * 26, 26, cx + side * 22, 10);
+        ctx.moveTo(cx + side * 15, 27);
+        ctx.lineTo(cx + side * 12, 14);
+        ctx.moveTo(cx + side * 20, 20);
+        ctx.lineTo(cx + side * 30, 16);
+        ctx.stroke();
+        // Ears
+        ctx.fillStyle = '#85502b';
+        ctx.beginPath();
+        ctx.ellipse(cx + side * 13, 38, 7, 3.5, side * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Slender head
+      ctx.fillStyle = '#9c6238';
+      ctx.strokeStyle = '#29170b';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.ellipse(cx, 32, 9, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+
+    case 'boar_wild': {
+      // White curved tusks protruding forward!
+      ctx.strokeStyle = '#f5efe1';
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = 'round';
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + side * 8, 26);
+        ctx.quadraticCurveTo(cx + side * 18, 18, cx + side * 13, 11);
+        ctx.stroke();
+      }
+      // Stocky bristled dark body
+      ctx.fillStyle = '#4a3525';
+      ctx.strokeStyle = '#1a110b';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 8, w * 0.35, h * 0.33, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Conical head & snout
+      ctx.beginPath();
+      ctx.moveTo(cx - 16, 40);
+      ctx.lineTo(cx - 7, 14);
+      ctx.lineTo(cx + 7, 14);
+      ctx.lineTo(cx + 16, 40);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Dark dorsal bristle stripe
+      ctx.strokeStyle = '#241810';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(cx, 26);
+      ctx.lineTo(cx, h - 22);
+      ctx.stroke();
       break;
     }
 

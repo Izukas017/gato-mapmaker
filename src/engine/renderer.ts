@@ -552,6 +552,68 @@ function drawPaths(
       ctx.lineWidth = w;
       tracePolyline(ctx, path.points, ppg, path.smooth);
       ctx.stroke();
+    } else if (
+      path.style === 'fence_wood' ||
+      path.style === 'fence_picket' ||
+      path.style === 'fence_iron'
+    ) {
+      const isIron = path.style === 'fence_iron';
+      const isPicket = path.style === 'fence_picket';
+      const railW = Math.max(3, Math.min(w * 0.42, ppg * 0.22));
+      // Ground shadow
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.38)';
+      ctx.lineWidth = railW + 5;
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+      // Outer dark stroke
+      ctx.strokeStyle = isIron ? '#12151c' : '#26160a';
+      ctx.lineWidth = railW + 2.5;
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+      // Rail core
+      ctx.strokeStyle = isIron ? '#475569' : isPicket ? '#ded6c3' : '#8c5e35';
+      ctx.lineWidth = railW;
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+      if (isPicket || isIron) {
+        ctx.save();
+        ctx.strokeStyle = isIron ? '#94a3b8' : '#f5efe2';
+        ctx.lineWidth = railW * 1.55;
+        ctx.setLineDash([Math.max(2, ppg * 0.06), Math.max(4, ppg * 0.14)]);
+        tracePolyline(ctx, path.points, ppg, path.smooth);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // Posts along vertices and every ~1 tile
+      const postSize = Math.max(5, railW * 1.75);
+      const stepPx = ppg * 1.0;
+      const drawPost = (px: number, py: number) => {
+        ctx.fillStyle = isIron ? '#334155' : isPicket ? '#e7dfd0' : '#6e4726';
+        ctx.strokeStyle = isIron ? '#0f172a' : '#241408';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        if (isIron) {
+          ctx.arc(px, py, postSize * 0.55, 0, Math.PI * 2);
+        } else {
+          ctx.rect(px - postSize * 0.5, py - postSize * 0.5, postSize, postSize);
+        }
+        ctx.fill();
+        ctx.stroke();
+      };
+      for (let i = 0; i < path.points.length - 1; i++) {
+        const ax = path.points[i].x * ppg;
+        const ay = path.points[i].y * ppg;
+        const bx = path.points[i + 1].x * ppg;
+        const by = path.points[i + 1].y * ppg;
+        const segLen = Math.hypot(bx - ax, by - ay);
+        const count = Math.max(1, Math.round(segLen / stepPx));
+        for (let k = 0; k < count; k++) {
+          const t = k / count;
+          drawPost(ax + (bx - ax) * t, ay + (by - ay) * t);
+        }
+      }
+      const lastPt = path.points[path.points.length - 1];
+      drawPost(lastPt.x * ppg, lastPt.y * ppg);
     } else {
       // cliff_edge
       ctx.strokeStyle = '#2d2925';

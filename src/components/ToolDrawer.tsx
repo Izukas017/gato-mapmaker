@@ -57,6 +57,9 @@ const PORTAL_LIST: { id: PortalKind; label: string }[] = [
 const PATH_LIST: { id: PathStyleId; label: string; color: string }[] = [
   { id: 'dirt_road', label: 'Camino Tierra', color: '#9e8863' },
   { id: 'cobble_path', label: 'Calzada Adoquín', color: '#78746e' },
+  { id: 'fence_wood', label: 'Valla Madera', color: '#8c5e35' },
+  { id: 'fence_picket', label: 'Valla Estacas', color: '#ded6c3' },
+  { id: 'fence_iron', label: 'Verja Hierro', color: '#475569' },
   { id: 'wood_bridge', label: 'Puente Madera', color: '#8a623f' },
   { id: 'rope_bridge', label: 'Puente Colgante', color: '#7c532f' },
   { id: 'rail_tracks', label: 'Vías Vagoneta', color: '#94a3b8' },
@@ -116,6 +119,9 @@ export function ToolDrawer() {
   }, [resizing, setPrefs]);
 
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({
+    tavern: true,
+    shop: true,
+    dungeon: true,
     temple: true,
     magic: true,
     storage: true,

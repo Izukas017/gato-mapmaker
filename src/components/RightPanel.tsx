@@ -68,6 +68,9 @@ const PORTAL_TYPES: { id: PortalKind; label: string }[] = [
 const PATH_STYLES: { id: PathStyleId; label: string }[] = [
   { id: 'dirt_road', label: 'Camino Tierra' },
   { id: 'cobble_path', label: 'Calzada Adoquín' },
+  { id: 'fence_wood', label: 'Valla Madera' },
+  { id: 'fence_picket', label: 'Valla Estacas' },
+  { id: 'fence_iron', label: 'Verja Hierro' },
   { id: 'wood_bridge', label: 'Puente Madera' },
   { id: 'rope_bridge', label: 'Puente Colgante' },
   { id: 'rail_tracks', label: 'Vías Vagoneta' },
