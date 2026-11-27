@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { RotateCcw, Trash2, X } from 'lucide-react';
+import { CheckCircle2, RotateCcw, Smartphone, Trash2, X } from 'lucide-react';
 import { exportMap } from '../engine/exporter';
 import { TERRAIN_MATERIALS } from '../engine/textures';
+import { usePwaInstall } from '../hooks/usePwaInstall';
 import { clearSavedMap, useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
 import type { TerrainMaterialId } from '../types/map';
@@ -217,6 +218,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
   const doc = useMapStore((s) => s.doc);
   const updateGrid = useMapStore((s) => s.updateGrid);
   const loadPreset = useMapStore((s) => s.loadPreset);
+  const { canInstall, isStandalone, triggerInstall } = usePwaInstall();
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -443,6 +445,35 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
               <span className="control-val">{Math.round(doc.grid.opacity * 100)}%</span>
             </div>
           </div>
+
+          <div className="section-label" style={{ marginTop: 6, marginBottom: 0 }}>
+            Aplicación Móvil y Escritorio (PWA)
+          </div>
+
+          {isStandalone ? (
+            <div className="toggle-btn active" style={{ cursor: 'default' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle2 size={15} style={{ color: 'var(--success)' }} />
+                Aplicación instalada y lista para uso sin conexión
+              </span>
+              <span>ACTIVA</span>
+            </div>
+          ) : canInstall ? (
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '9px 14px' }}
+              onClick={triggerInstall}
+            >
+              <Smartphone size={15} />
+              Instalar Gato MapMaker como Aplicación
+            </button>
+          ) : (
+            <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+              Compatible con instalación como App (PWA): en móvil usa el menú del navegador{' '}
+              <b>«Instalar aplicación»</b> o <b>«Añadir a pantalla de inicio»</b> para abrirla a pantalla completa y sin conexión.
+            </div>
+          )}
 
           <div className="section-label" style={{ marginTop: 6, marginBottom: 0 }}>
             Almacenamiento Local

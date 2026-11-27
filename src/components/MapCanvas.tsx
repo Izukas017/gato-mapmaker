@@ -1,4 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Check,
+  Copy,
+  DoorOpen,
+  Hand,
+  RotateCw,
+  SlidersHorizontal,
+  Trash2,
+  Undo2,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import { extractOccluderSegments } from '../engine/lighting';
 import { uid } from '../engine/presets';
 import { getPropDefinition, getPropSprite } from '../engine/props';
@@ -95,7 +108,18 @@ export function MapCanvas() {
   });
   const [isPanning, setIsPanning] = useState(false);
   const [spaceDown, setSpaceDown] = useState(false);
+  const [handPanMode, setHandPanMode] = useState(false);
   const [renderTick, setRenderTick] = useState(0);
+
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{
+    startDist: number;
+    startMidX: number;
+    startMidY: number;
+    startZoom: number;
+    startPanX: number;
+    startPanY: number;
+  } | null>(null);
 
   const dragRef = useRef<{
     mode: 'none' | 'pan' | 'move_sel' | 'terrain' | 'water' | 'scatter';
@@ -345,18 +369,18 @@ export function MapCanvas() {
 
   // Hit-testing for Select tool
   const hitTest = useCallback(
-    (pt: Point): SelectionRef | null => {
+    (pt: Point, touchPad = 0): SelectionRef | null => {
       // 1. Lights
       for (let i = activeLevel.lights.length - 1; i >= 0; i--) {
         const l = activeLevel.lights[i];
-        if (Math.hypot(pt.x - l.x, pt.y - l.y) <= 0.45) {
+        if (Math.hypot(pt.x - l.x, pt.y - l.y) <= 0.45 + touchPad) {
           return { kind: 'light', id: l.id };
         }
       }
       // 2. Portals
       for (let i = activeLevel.portals.length - 1; i >= 0; i--) {
         const p = activeLevel.portals[i];
-        if (Math.hypot(pt.x - p.x, pt.y - p.y) <= Math.max(0.5, p.width * 0.5)) {
+        if (Math.hypot(pt.x - p.x, pt.y - p.y) <= Math.max(0.5, p.width * 0.5) + touchPad) {
           return { kind: 'portal', id: p.id };
         }
       }
@@ -364,8 +388,8 @@ export function MapCanvas() {
       for (let i = activeLevel.objects.length - 1; i >= 0; i--) {
         const o = activeLevel.objects[i];
         const def = getPropDefinition(o.propId, doc.customAssets);
-        const rx = ((def?.widthTiles ?? 1) * Math.abs(o.scaleX)) / 2;
-        const ry = ((def?.heightTiles ?? 1) * Math.abs(o.scaleY)) / 2;
+        const rx = ((def?.widthTiles ?? 1) * Math.abs(o.scaleX)) / 2 + touchPad;
+        const ry = ((def?.heightTiles ?? 1) * Math.abs(o.scaleY)) / 2 + touchPad;
         const dx = pt.x - o.x;
         const dy = pt.y - o.y;
         const cos = Math.cos(-o.rotation);
@@ -702,12 +726,55 @@ export function MapCanvas() {
   }, []);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // ignore if capture unsupported
+    }
+
+    if (typeof window !== 'undefined' && window.innerWidth <= 860) {
+      const ui = useUiPrefs.getState();
+      if (ui.leftPanelOpen || ui.rightPanelOpen) {
+        ui.setPrefs({ leftPanelOpen: false, rightPanelOpen: false });
+      }
+    }
+
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Two-finger touch: pinch-to-zoom + two-finger pan
+    if (pointersRef.current.size >= 2) {
+      dragRef.current.mode = 'none';
+      dragRef.current.strokePoints = [];
+      dragRef.current.snapshotDoc = null;
+      setIsPanning(false);
+      setRectStart(null);
+      setMarqueeStart(null);
+      setAlignGuides({ x: null, y: null });
+
+      const pts = Array.from(pointersRef.current.values());
+      const p1 = pts[0];
+      const p2 = pts[1];
+      const rect = canvasRef.current?.getBoundingClientRect();
+      const midX = (p1.x + p2.x) / 2 - (rect?.left ?? 0);
+      const midY = (p1.y + p2.y) / 2 - (rect?.top ?? 0);
+      const dist = Math.max(12, Math.hypot(p2.x - p1.x, p2.y - p1.y));
+      pinchRef.current = {
+        startDist: dist,
+        startMidX: midX,
+        startMidY: midY,
+        startZoom: zoom,
+        startPanX: panX,
+        startPanY: panY,
+      };
+      setRenderTick((t) => t + 1);
+      return;
+    }
+
     const rawTile = screenToTile(e.clientX, e.clientY);
     const snapped = snapPoint(rawTile, doc.grid.snap, doc.grid.snapSubdivision);
 
-    // Middle button or Space+Left or Right-drag pans
-    if (e.button === 1 || (e.button === 0 && spaceDown) || e.button === 2) {
+    // Middle button, Space+Left, Hand mode, or Right-drag pans
+    if (e.button === 1 || (e.button === 0 && (spaceDown || handPanMode)) || e.button === 2) {
       setIsPanning(true);
       dragRef.current = {
         mode: 'pan',
@@ -727,7 +794,8 @@ export function MapCanvas() {
     const store = useMapStore.getState();
 
     if (activeTool === 'select') {
-      const hit = hitTest(rawTile);
+      const touchPad = e.pointerType === 'touch' ? 0.28 : 0;
+      const hit = hitTest(rawTile, touchPad);
       if (e.ctrlKey || e.metaKey || e.shiftKey) {
         if (hit) {
           toggleSelectionItem(hit);
@@ -900,6 +968,32 @@ export function MapCanvas() {
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    if (pointersRef.current.size >= 2 && pinchRef.current) {
+      const pts = Array.from(pointersRef.current.values());
+      const p1 = pts[0];
+      const p2 = pts[1];
+      const rect = canvasRef.current?.getBoundingClientRect();
+      const midX = (p1.x + p2.x) / 2 - (rect?.left ?? 0);
+      const midY = (p1.y + p2.y) / 2 - (rect?.top ?? 0);
+      const dist = Math.max(12, Math.hypot(p2.x - p1.x, p2.y - p1.y));
+
+      const p = pinchRef.current;
+      const nextZoom = Math.max(0.2, Math.min(3.5, p.startZoom * (dist / p.startDist)));
+      const effRatio = nextZoom / p.startZoom;
+      const nextPanX = midX - (p.startMidX - p.startPanX) * effRatio;
+      const nextPanY = midY - (p.startMidY - p.startPanY) * effRatio;
+      setViewport(nextZoom, nextPanX, nextPanY);
+      return;
+    }
+
+    if (pinchRef.current) {
+      return;
+    }
+
     const rawTile = screenToTile(e.clientX, e.clientY);
     setHoverTile(rawTile);
     setCursorTile({
@@ -983,6 +1077,17 @@ export function MapCanvas() {
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    pointersRef.current.delete(e.pointerId);
+
+    if (pinchRef.current) {
+      if (pointersRef.current.size === 0) {
+        pinchRef.current = null;
+      }
+      dragRef.current.mode = 'none';
+      dragRef.current.strokePoints = [];
+      return;
+    }
+
     const rawTile = screenToTile(e.clientX, e.clientY);
     const snapped = snapPoint(rawTile, doc.grid.snap, doc.grid.snapSubdivision);
     const drag = dragRef.current;
@@ -1191,14 +1296,41 @@ export function MapCanvas() {
     }
   })();
 
+  const minDraftPts = activeTool === 'building' || activeTool === 'roof' ? 3 : 2;
+  const selectedObj =
+    selection?.kind === 'object'
+      ? activeLevel.objects.find((o) => o.id === selection.id) ?? null
+      : null;
+  const selectedPortal =
+    selection?.kind === 'portal'
+      ? activeLevel.portals.find((p) => p.id === selection.id) ?? null
+      : null;
+
+  const zoomCentered = (factor: number) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    const cx = rect ? rect.width / 2 : 300;
+    const cy = rect ? rect.height / 2 : 300;
+    const nextZoom = Math.max(0.2, Math.min(3.5, zoom * factor));
+    const ratio = nextZoom / zoom;
+    setViewport(nextZoom, cx - (cx - panX) * ratio, cy - (cy - panY) * ratio);
+  };
+
   return (
     <div
       ref={containerRef}
       className="canvas-stage"
-      style={{ cursor: isPanning || spaceDown ? 'grabbing' : activeTool === 'select' ? 'default' : 'crosshair' }}
+      style={{
+        cursor:
+          isPanning || spaceDown || handPanMode
+            ? 'grabbing'
+            : activeTool === 'select'
+              ? 'default'
+              : 'crosshair',
+      }}
     >
       <canvas
         ref={canvasRef}
+        style={{ touchAction: 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1206,7 +1338,130 @@ export function MapCanvas() {
         onDoubleClick={handleDoubleClick}
         onContextMenu={(e) => e.preventDefault()}
       />
-      {showCanvasHints && <div className="canvas-hint-pill">{toolHint}</div>}
+
+      <div className="canvas-floating-controls">
+        <button
+          type="button"
+          className={`canvas-fab-btn ${handPanMode ? 'active' : ''}`}
+          onClick={() => setHandPanMode((v) => !v)}
+          title="Modo Mano: arrastrar mapa con 1 dedo o clic"
+          aria-label="Modo Mano para mover el mapa"
+          aria-pressed={handPanMode}
+        >
+          <Hand size={16} />
+        </button>
+        <button
+          type="button"
+          className="canvas-fab-btn"
+          onClick={() => zoomCentered(1.2)}
+          title="Acercar mapa"
+          aria-label="Acercar"
+        >
+          <ZoomIn size={16} />
+        </button>
+        <button
+          type="button"
+          className="canvas-fab-btn"
+          onClick={() => zoomCentered(1 / 1.2)}
+          title="Alejar mapa"
+          aria-label="Alejar"
+        >
+          <ZoomOut size={16} />
+        </button>
+      </div>
+
+      {draftPoints.length > 0 && (
+        <div className="canvas-action-bar" role="toolbar" aria-label="Acciones de trazado">
+          <span className="canvas-action-count">{draftPoints.length} pts</span>
+          <button
+            type="button"
+            className="action-pill-btn primary"
+            disabled={draftPoints.length < minDraftPts}
+            onClick={commitDraftPolyline}
+          >
+            <Check size={14} /> Terminar
+          </button>
+          <button
+            type="button"
+            className="action-pill-btn"
+            onClick={() => setDraftPoints((prev) => prev.slice(0, -1))}
+          >
+            <Undo2 size={14} /> Punto
+          </button>
+          <button
+            type="button"
+            className="action-pill-btn danger"
+            onClick={() => setDraftPoints([])}
+          >
+            <X size={14} /> Cancelar
+          </button>
+        </div>
+      )}
+
+      {selectedItems.length > 0 && draftPoints.length === 0 && (
+        <div className="canvas-selection-bar" role="toolbar" aria-label="Acciones rápidas de selección">
+          {selectedObj && (
+            <button
+              type="button"
+              className="action-pill-btn"
+              onClick={() =>
+                useMapStore.getState().updateSelectedObject({
+                  rotation: (selectedObj.rotation + Math.PI / 4) % (Math.PI * 2),
+                })
+              }
+            >
+              <RotateCw size={14} /> +45°
+            </button>
+          )}
+          {selectedPortal && (
+            <button
+              type="button"
+              className="action-pill-btn"
+              onClick={() => {
+                const nextOpen = !selectedPortal.open;
+                const isSolidDoor =
+                  selectedPortal.kind === 'door_wood' ||
+                  selectedPortal.kind === 'door_double' ||
+                  selectedPortal.kind === 'door_iron' ||
+                  selectedPortal.kind === 'door_ornate_gold' ||
+                  selectedPortal.kind === 'door_secret';
+                useMapStore.getState().updateSelectedPortal({
+                  open: nextOpen,
+                  openAngle: nextOpen ? (selectedPortal.openAngle || 90) : 0,
+                  blocksLight: isSolidDoor && !nextOpen,
+                });
+              }}
+            >
+              <DoorOpen size={14} /> {selectedPortal.open ? 'Cerrar' : 'Abrir'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="action-pill-btn"
+            onClick={() => useMapStore.getState().duplicateSelected()}
+          >
+            <Copy size={14} /> Duplicar
+          </button>
+          <button
+            type="button"
+            className="action-pill-btn"
+            onClick={() => useUiPrefs.getState().setPrefs({ rightPanelOpen: true })}
+          >
+            <SlidersHorizontal size={14} /> Editar
+          </button>
+          <button
+            type="button"
+            className="action-pill-btn danger"
+            onClick={() => useMapStore.getState().deleteSelected()}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )}
+
+      {showCanvasHints && draftPoints.length === 0 && (
+        <div className="canvas-hint-pill">{toolHint}</div>
+      )}
     </div>
   );
 }

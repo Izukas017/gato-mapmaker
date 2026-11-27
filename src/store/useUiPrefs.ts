@@ -34,7 +34,12 @@ function clampWidth(w: number | undefined, fallback: number): number {
   return Math.max(220, Math.min(520, w ?? fallback));
 }
 
+function isMobileViewport(): boolean {
+  return typeof window !== 'undefined' && window.innerWidth <= 860;
+}
+
 function loadInitialPrefs(): UiPrefs {
+  const mobile = isMobileViewport();
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
       const raw = window.localStorage.getItem(PREFS_KEY);
@@ -43,6 +48,8 @@ function loadInitialPrefs(): UiPrefs {
         return {
           ...DEFAULT_UI_PREFS,
           ...parsed,
+          leftPanelOpen: mobile ? false : (parsed.leftPanelOpen ?? DEFAULT_UI_PREFS.leftPanelOpen),
+          rightPanelOpen: mobile ? false : (parsed.rightPanelOpen ?? DEFAULT_UI_PREFS.rightPanelOpen),
           leftPanelWidth: clampWidth(parsed.leftPanelWidth, DEFAULT_UI_PREFS.leftPanelWidth),
           rightPanelWidth: clampWidth(parsed.rightPanelWidth, DEFAULT_UI_PREFS.rightPanelWidth),
         };
@@ -51,7 +58,11 @@ function loadInitialPrefs(): UiPrefs {
   } catch {
     // ignore
   }
-  return { ...DEFAULT_UI_PREFS };
+  return {
+    ...DEFAULT_UI_PREFS,
+    leftPanelOpen: !mobile,
+    rightPanelOpen: !mobile,
+  };
 }
 
 function savePrefs(prefs: UiPrefs) {
@@ -75,10 +86,20 @@ export const useUiPrefs = create<UiPrefsStore>((set) => ({
   ...loadInitialPrefs(),
   setPrefs: (patch) =>
     set((s) => {
+      const mobile = isMobileViewport();
+      let leftOpen = patch.leftPanelOpen ?? s.leftPanelOpen;
+      let rightOpen = patch.rightPanelOpen ?? s.rightPanelOpen;
+      if (mobile) {
+        if (patch.leftPanelOpen === true && patch.rightPanelOpen === undefined) {
+          rightOpen = false;
+        } else if (patch.rightPanelOpen === true && patch.leftPanelOpen === undefined) {
+          leftOpen = false;
+        }
+      }
       const next: UiPrefs = {
-        leftPanelOpen: patch.leftPanelOpen ?? s.leftPanelOpen,
+        leftPanelOpen: leftOpen,
         leftPanelWidth: clampWidth(patch.leftPanelWidth, s.leftPanelWidth),
-        rightPanelOpen: patch.rightPanelOpen ?? s.rightPanelOpen,
+        rightPanelOpen: rightOpen,
         rightPanelWidth: clampWidth(patch.rightPanelWidth, s.rightPanelWidth),
         showCanvasHints: patch.showCanvasHints ?? s.showCanvasHints,
         alwaysShowLightHandles:
@@ -94,18 +115,28 @@ export const useUiPrefs = create<UiPrefsStore>((set) => ({
     }),
   toggleLeftPanel: () =>
     set((s) => {
-      const next = { ...s, leftPanelOpen: !s.leftPanelOpen };
+      const opening = !s.leftPanelOpen;
+      const rightOpen = isMobileViewport() && opening ? false : s.rightPanelOpen;
+      const next = { ...s, leftPanelOpen: opening, rightPanelOpen: rightOpen };
       savePrefs(next);
-      return { leftPanelOpen: next.leftPanelOpen };
+      return { leftPanelOpen: next.leftPanelOpen, rightPanelOpen: next.rightPanelOpen };
     }),
   toggleRightPanel: () =>
     set((s) => {
-      const next = { ...s, rightPanelOpen: !s.rightPanelOpen };
+      const opening = !s.rightPanelOpen;
+      const leftOpen = isMobileViewport() && opening ? false : s.leftPanelOpen;
+      const next = { ...s, rightPanelOpen: opening, leftPanelOpen: leftOpen };
       savePrefs(next);
-      return { rightPanelOpen: next.rightPanelOpen };
+      return { rightPanelOpen: next.rightPanelOpen, leftPanelOpen: next.leftPanelOpen };
     }),
   resetPrefs: () => {
-    savePrefs(DEFAULT_UI_PREFS);
-    set({ ...DEFAULT_UI_PREFS });
+    const mobile = isMobileViewport();
+    const resetState = {
+      ...DEFAULT_UI_PREFS,
+      leftPanelOpen: !mobile,
+      rightPanelOpen: !mobile,
+    };
+    savePrefs(resetState);
+    set(resetState);
   },
 }));

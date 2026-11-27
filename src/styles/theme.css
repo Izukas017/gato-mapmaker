@@ -811,3 +811,323 @@ input[type='color'] {
   background: var(--border-subtle);
   margin: 4px 0;
 }
+
+.dropdown-clickaway {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: transparent;
+}
+
+.topbar-btn.install-btn {
+  background: rgba(61, 163, 156, 0.16);
+  border: 1px solid rgba(61, 163, 156, 0.45);
+  color: #7ee0d9;
+  font-weight: 600;
+}
+
+.topbar-btn.install-btn:hover {
+  background: rgba(61, 163, 156, 0.28);
+  color: #a9f0eb;
+}
+
+.mobile-drawer-btn {
+  display: none;
+}
+
+/* Floating touch & quick canvas controls */
+.canvas-floating-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 12;
+}
+
+.canvas-fab-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: rgba(29, 32, 39, 0.9);
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.canvas-fab-btn:hover {
+  background: var(--bg-panel-hover);
+  color: var(--text-primary);
+}
+
+.canvas-fab-btn.active {
+  background: var(--accent);
+  border-color: var(--accent-hover);
+  color: #14161b;
+}
+
+.canvas-action-bar,
+.canvas-selection-bar {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 99px;
+  background: rgba(21, 23, 28, 0.94);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  z-index: 18;
+  max-width: calc(100vw - 20px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.canvas-selection-bar {
+  display: none;
+}
+
+.canvas-action-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.action-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: 99px;
+  background: var(--bg-panel-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.action-pill-btn:hover:not(:disabled) {
+  background: var(--bg-panel-hover);
+}
+
+.action-pill-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.action-pill-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #14161b;
+  font-weight: 600;
+}
+
+.action-pill-btn.danger {
+  background: rgba(217, 83, 79, 0.18);
+  border-color: rgba(217, 83, 79, 0.45);
+  color: #f2928f;
+}
+
+/* Coarse pointer / touchscreen enhancements (phones & tablets) */
+@media (pointer: coarse) {
+  .canvas-selection-bar {
+    display: flex;
+  }
+
+  .canvas-fab-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  input[type='range'] {
+    min-height: 28px;
+  }
+}
+
+/* Mobile & narrow viewport studio layout */
+@media (max-width: 860px) {
+  :root {
+    --topbar-h: calc(46px + env(safe-area-inset-top, 0px));
+  }
+
+  .app-shell {
+    height: 100dvh;
+    grid-template-rows: var(--topbar-h) 1fr;
+  }
+
+  .statusbar {
+    display: none;
+  }
+
+  .topbar {
+    padding: env(safe-area-inset-top, 0px) 8px 0 8px;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .topbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .topbar-group {
+    flex-shrink: 0;
+  }
+
+  .brand-title {
+    display: none;
+  }
+
+  .brand-mark {
+    padding-right: 6px;
+    gap: 5px;
+  }
+
+  .topbar input[type='text'] {
+    width: 120px !important;
+    font-size: 13px;
+  }
+
+  .topbar-btn {
+    flex-shrink: 0;
+    min-height: 34px;
+    padding: 6px 9px;
+  }
+
+  .dropdown-menu {
+    position: fixed;
+    top: calc(var(--topbar-h) + 4px);
+    left: 8px;
+    right: auto;
+    max-width: calc(100vw - 16px);
+    z-index: 120;
+  }
+
+  .dropdown-item {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .app-workspace {
+    flex-direction: column;
+  }
+
+  .canvas-stage {
+    order: 1;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .tool-rail {
+    order: 2;
+    width: 100%;
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding: 5px 8px calc(5px + env(safe-area-inset-bottom, 0px)) 8px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 6px;
+    border-right: none;
+    border-top: 1px solid var(--border-subtle);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .tool-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-drawer-btn {
+    display: flex;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-panel-elevated);
+  }
+
+  .rail-btn {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+
+  .rail-btn.active {
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+
+  .rail-key {
+    display: none;
+  }
+
+  /* Bottom sheets for tool options and inspector */
+  .left-panel-shell,
+  .right-panel-shell {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    width: 100% !important;
+    height: 55dvh;
+    max-height: 68dvh;
+    z-index: 45;
+    border-radius: 14px 14px 0 0;
+    overflow: hidden;
+    border-top: 1px solid var(--border-strong);
+    box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.68);
+  }
+
+  .left-resize-handle,
+  .right-resize-handle,
+  .left-reopen-tab,
+  .right-reopen-tab {
+    display: none !important;
+  }
+
+  .panel-header {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .panel-scroll {
+    padding: 12px 14px 20px 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .toggle-btn {
+    min-height: 38px;
+    padding: 8px 10px;
+  }
+
+  .chip {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .canvas-hint-pill {
+    display: none;
+  }
+
+  .canvas-action-bar,
+  .canvas-selection-bar {
+    display: flex;
+    bottom: 12px;
+  }
+
+  .modal-card {
+    width: 94vw !important;
+    max-height: 88dvh !important;
+  }
+}

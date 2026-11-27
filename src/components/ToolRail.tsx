@@ -9,9 +9,11 @@ import {
   MousePointer2,
   Mountain,
   Route,
+  SlidersHorizontal,
   SquareDashed,
 } from 'lucide-react';
 import { useMapStore } from '../store/useMapStore';
+import { useUiPrefs } from '../store/useUiPrefs';
 import type { ToolId } from '../types/map';
 
 const TOOLS: { id: ToolId; label: string; key: string; icon: React.ReactNode }[] = [
@@ -30,14 +32,36 @@ const TOOLS: { id: ToolId; label: string; key: string; icon: React.ReactNode }[]
 export function ToolRail() {
   const activeTool = useMapStore((s) => s.activeTool);
   const setTool = useMapStore((s) => s.setTool);
+  const leftPanelOpen = useUiPrefs((s) => s.leftPanelOpen);
+  const toggleLeftPanel = useUiPrefs((s) => s.toggleLeftPanel);
+
+  const handleToolClick = (id: ToolId) => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 860;
+    if (isMobile && activeTool === id) {
+      toggleLeftPanel();
+      return;
+    }
+    setTool(id);
+  };
 
   return (
     <nav className="tool-rail" aria-label="Herramientas de diseño">
+      <button
+        type="button"
+        className={`rail-btn mobile-drawer-btn ${leftPanelOpen ? 'active' : ''}`}
+        onClick={toggleLeftPanel}
+        title="Opciones de la herramienta activa"
+        aria-label="Opciones de herramienta"
+        aria-pressed={leftPanelOpen}
+      >
+        <SlidersHorizontal size={18} />
+      </button>
       {TOOLS.map((t) => (
         <button
           key={t.id}
+          type="button"
           className={`rail-btn ${activeTool === t.id ? 'active' : ''}`}
-          onClick={() => setTool(t.id)}
+          onClick={() => handleToolClick(t.id)}
           title={`${t.label} (${t.key})`}
           aria-label={t.label}
           aria-pressed={activeTool === t.id}

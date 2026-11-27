@@ -8,15 +8,20 @@ import {
   Map as MapIcon,
   PanelLeft,
   PanelRight,
+  PlusSquare,
   Redo2,
   Save,
   Settings,
+  Share,
+  Smartphone,
   Sun,
   Undo2,
+  X,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
 import { saveProjectJson } from '../engine/exporter';
+import { usePwaInstall } from '../hooks/usePwaInstall';
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
 import type { MapDocument } from '../types/map';
@@ -54,6 +59,7 @@ export function TopBar({
 
   const [menuOpen, setMenuOpen] = useState<'file' | 'presets' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { canInstall, showIosGuide, setShowIosGuide, triggerInstall } = usePwaInstall();
 
   const handleOpenFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,9 +84,17 @@ export function TopBar({
       <div className="topbar-group">
         <div className="brand-mark">
           <div className="brand-badge">G</div>
-          <span>Gato MapMaker</span>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>v0.3</span>
+          <span className="brand-title">Gato MapMaker</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>v0.4</span>
         </div>
+
+        {menuOpen && (
+          <div
+            className="dropdown-clickaway"
+            onClick={() => setMenuOpen(null)}
+            aria-hidden="true"
+          />
+        )}
 
         <div className="dropdown-wrap">
           <button
@@ -282,6 +296,18 @@ export function TopBar({
           Panel Der.
         </button>
 
+        {canInstall && (
+          <button
+            type="button"
+            className="topbar-btn install-btn"
+            onClick={triggerInstall}
+            title="Descargar e instalar Gato MapMaker como aplicación"
+          >
+            <Smartphone size={14} />
+            Instalar App
+          </button>
+        )}
+
         <button
           className="topbar-btn"
           onClick={onOpenSettingsDialog}
@@ -304,6 +330,37 @@ export function TopBar({
         style={{ display: 'none' }}
         onChange={handleOpenFile}
       />
+
+      {showIosGuide && (
+        <div className="modal-backdrop" onClick={() => setShowIosGuide(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span>Instalar Gato MapMaker en iOS</span>
+              <button type="button" onClick={() => setShowIosGuide(false)} aria-label="Cerrar">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ fontSize: 13, lineHeight: 1.5 }}>
+              <p style={{ color: 'var(--text-secondary)' }}>
+                Puedes instalar <b>Gato MapMaker</b> en tu iPhone o iPad para usarlo a pantalla completa y sin conexión:
+              </p>
+              <div className="toggle-btn" style={{ justifyContent: 'flex-start', gap: 10 }}>
+                <Share size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <span>1. Toca el botón <b>Compartir</b> en la barra de Safari.</span>
+              </div>
+              <div className="toggle-btn" style={{ justifyContent: 'flex-start', gap: 10 }}>
+                <PlusSquare size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <span>2. Selecciona <b>«Añadir a pantalla de inicio»</b> y pulsa <b>Añadir</b>.</span>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-primary" onClick={() => setShowIosGuide(false)}>
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
