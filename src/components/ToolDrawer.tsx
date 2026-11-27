@@ -14,6 +14,7 @@ import {
   getPropThumbnail,
   PROP_CATEGORIES,
 } from '../engine/props';
+import { getPathThumbnail } from '../engine/renderer';
 import {
   FLOOR_PATTERNS,
   getTextureThumbnail,
@@ -54,22 +55,22 @@ const PORTAL_LIST: { id: PortalKind; label: string }[] = [
   { id: 'window_bars', label: 'Ventana Barrotes' },
 ];
 
-const PATH_LIST: { id: PathStyleId; label: string; color: string }[] = [
-  { id: 'dirt_road', label: 'Camino Tierra', color: '#9e8863' },
-  { id: 'cobble_path', label: 'Calzada Adoquín', color: '#78746e' },
-  { id: 'fence_wood', label: 'Valla Madera', color: '#8c5e35' },
-  { id: 'fence_picket', label: 'Valla Estacas', color: '#ded6c3' },
-  { id: 'fence_iron', label: 'Verja Hierro', color: '#475569' },
-  { id: 'wood_bridge', label: 'Puente Madera', color: '#8a623f' },
-  { id: 'rope_bridge', label: 'Puente Colgante', color: '#7c532f' },
-  { id: 'rail_tracks', label: 'Vías Vagoneta', color: '#94a3b8' },
-  { id: 'stream_brook', label: 'Arroyo de Agua', color: '#45a8c4' },
-  { id: 'lava_stream', label: 'Río de Lava', color: '#f97316' },
-  { id: 'stone_wall_low', label: 'Murete Piedra', color: '#7d776e' },
-  { id: 'carpet_teal', label: 'Alfombra Templo', color: '#367d77' },
-  { id: 'carpet_crimson', label: 'Alfombra Real', color: '#852d33' },
-  { id: 'hedge', label: 'Seto Jardín', color: '#39693d' },
-  { id: 'cliff_edge', label: 'Borde Acantilado', color: '#59534b' },
+const PATH_LIST: { id: PathStyleId; label: string }[] = [
+  { id: 'dirt_road', label: 'Camino Tierra' },
+  { id: 'cobble_path', label: 'Calzada Adoquín' },
+  { id: 'fence_wood', label: 'Valla Madera' },
+  { id: 'fence_picket', label: 'Valla Estacas' },
+  { id: 'fence_iron', label: 'Verja Hierro' },
+  { id: 'wood_bridge', label: 'Puente Madera' },
+  { id: 'rope_bridge', label: 'Puente Colgante' },
+  { id: 'rail_tracks', label: 'Vías Vagoneta' },
+  { id: 'stream_brook', label: 'Arroyo de Agua' },
+  { id: 'lava_stream', label: 'Río de Lava' },
+  { id: 'stone_wall_low', label: 'Murete Piedra' },
+  { id: 'carpet_teal', label: 'Alfombra Templo' },
+  { id: 'carpet_crimson', label: 'Alfombra Real' },
+  { id: 'hedge', label: 'Seto Jardín' },
+  { id: 'cliff_edge', label: 'Borde Acantilado' },
 ];
 
 const LIGHT_PRESETS = [
@@ -665,7 +666,10 @@ export function ToolDrawer() {
                     className={`swatch-card ${ts.pathStyle === p.id ? 'active' : ''}`}
                     onClick={() => updateTs({ pathStyle: p.id })}
                   >
-                    <span className="swatch-preview" style={{ background: p.color }} />
+                    <span
+                      className="swatch-preview"
+                      style={{ backgroundImage: `url(${getPathThumbnail(p.id)})` }}
+                    />
                     <span>{p.label}</span>
                   </button>
                 ))}

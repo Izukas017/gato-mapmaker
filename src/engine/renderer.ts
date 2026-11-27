@@ -18,6 +18,7 @@ import {
   getCachedVisibilityPolygon,
   hexToRgb,
 } from './lighting';
+import { bendHandles, pathSegments, samplePath } from './paths';
 import {
   getCustomImage,
   getPropDefinition,
@@ -443,191 +444,163 @@ function drawPaths(
   paths: PathItem[],
   ppg: number
 ) {
+  // Same-style paths share layers (all borders, then all fills) so crossings merge.
+  const byStyle = new Map<PathItem['style'], PathItem[]>();
   for (const path of paths) {
     if (path.points.length < 2) continue;
-    const w = path.width * ppg;
-    ctx.save();
-    ctx.lineCap = path.fadeEnds ? 'round' : 'butt';
-    ctx.lineJoin = 'round';
-
-    if (path.style === 'dirt_road') {
-      ctx.strokeStyle = 'rgba(138, 118, 86, 0.5)';
-      ctx.lineWidth = w * 1.25;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.strokeStyle = '#9e8863';
-      ctx.lineWidth = w;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-    } else if (path.style === 'cobble_path') {
-      const pat = getTexturePattern(ctx, 'terrain', 'cobblestone', ppg / 140);
-      ctx.strokeStyle = 'rgba(30,28,25,0.55)';
-      ctx.lineWidth = w + 4;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.strokeStyle = pat ?? '#78746e';
-      ctx.lineWidth = w;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-    } else if (path.style === 'wood_bridge') {
-      ctx.strokeStyle = '#332011';
-      ctx.lineWidth = w + 6;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      const pat = getTexturePattern(ctx, 'floor', 'wood_planks', ppg / 128);
-      ctx.strokeStyle = pat ?? '#8a623f';
-      ctx.lineWidth = w;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-    } else if (path.style === 'carpet_teal' || path.style === 'carpet_crimson') {
-      const main = path.style === 'carpet_teal' ? '#367d77' : '#852d33';
-      ctx.strokeStyle = main;
-      ctx.lineWidth = w;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.strokeStyle = '#d4b36a';
-      ctx.lineWidth = Math.max(2, w * 0.1);
-      ctx.setLineDash([8, 4]);
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-    } else if (path.style === 'hedge') {
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-      ctx.lineWidth = w + 6;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.strokeStyle = '#2d5232';
-      ctx.lineWidth = w;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.strokeStyle = '#487a49';
-      ctx.lineWidth = w * 0.6;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-    } else if (path.style === 'rail_tracks') {
-      ctx.strokeStyle = '#5c3c20';
-      ctx.lineWidth = w;
-      ctx.setLineDash([4, 8]);
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = Math.max(2, w * 0.25);
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-    } else if (path.style === 'rope_bridge') {
-      ctx.strokeStyle = '#7c532f';
-      ctx.lineWidth = w;
-      ctx.setLineDash([8, 3]);
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    } else if (path.style === 'stream_brook') {
-      ctx.strokeStyle = '#1e5b70';
-      ctx.lineWidth = w * 1.15;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.strokeStyle = '#45a8c4';
-      ctx.lineWidth = w * 0.78;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-    } else if (path.style === 'lava_stream') {
-      ctx.strokeStyle = '#4a180d';
-      ctx.lineWidth = w * 1.25;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = w * 0.85;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.strokeStyle = '#fde047';
-      ctx.lineWidth = w * 0.35;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-    } else if (path.style === 'stone_wall_low') {
-      ctx.strokeStyle = '#292724';
-      ctx.lineWidth = w + 3;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.strokeStyle = '#7d776e';
-      ctx.lineWidth = w;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-    } else if (
-      path.style === 'fence_wood' ||
-      path.style === 'fence_picket' ||
-      path.style === 'fence_iron'
-    ) {
-      const isIron = path.style === 'fence_iron';
-      const isPicket = path.style === 'fence_picket';
-      const railW = Math.max(3, Math.min(w * 0.42, ppg * 0.22));
-      // Ground shadow
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.38)';
-      ctx.lineWidth = railW + 5;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      // Outer dark stroke
-      ctx.strokeStyle = isIron ? '#12151c' : '#26160a';
-      ctx.lineWidth = railW + 2.5;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      // Rail core
-      ctx.strokeStyle = isIron ? '#475569' : isPicket ? '#ded6c3' : '#8c5e35';
-      ctx.lineWidth = railW;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      if (isPicket || isIron) {
-        ctx.save();
-        ctx.strokeStyle = isIron ? '#94a3b8' : '#f5efe2';
-        ctx.lineWidth = railW * 1.55;
-        ctx.setLineDash([Math.max(2, ppg * 0.06), Math.max(4, ppg * 0.14)]);
-        tracePolyline(ctx, path.points, ppg, path.smooth);
-        ctx.stroke();
-        ctx.restore();
-      }
-      // Posts along vertices and every ~1 tile
-      const postSize = Math.max(5, railW * 1.75);
-      const stepPx = ppg * 1.0;
-      const drawPost = (px: number, py: number) => {
-        ctx.fillStyle = isIron ? '#334155' : isPicket ? '#e7dfd0' : '#6e4726';
-        ctx.strokeStyle = isIron ? '#0f172a' : '#241408';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        if (isIron) {
-          ctx.arc(px, py, postSize * 0.55, 0, Math.PI * 2);
-        } else {
-          ctx.rect(px - postSize * 0.5, py - postSize * 0.5, postSize, postSize);
-        }
-        ctx.fill();
-        ctx.stroke();
-      };
-      for (let i = 0; i < path.points.length - 1; i++) {
-        const ax = path.points[i].x * ppg;
-        const ay = path.points[i].y * ppg;
-        const bx = path.points[i + 1].x * ppg;
-        const by = path.points[i + 1].y * ppg;
-        const segLen = Math.hypot(bx - ax, by - ay);
-        const count = Math.max(1, Math.round(segLen / stepPx));
-        for (let k = 0; k < count; k++) {
-          const t = k / count;
-          drawPost(ax + (bx - ax) * t, ay + (by - ay) * t);
-        }
-      }
-      const lastPt = path.points[path.points.length - 1];
-      drawPost(lastPt.x * ppg, lastPt.y * ppg);
-    } else {
-      // cliff_edge
-      ctx.strokeStyle = '#2d2925';
-      ctx.lineWidth = w;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-      ctx.strokeStyle = '#70685e';
-      ctx.lineWidth = w * 0.55;
-      tracePolyline(ctx, path.points, ppg, path.smooth);
-      ctx.stroke();
-    }
-
-    ctx.restore();
+    byStyle.set(path.style, [...(byStyle.get(path.style) ?? []), path]);
   }
+  for (const group of byStyle.values()) {
+    const layered = group.map((path) => pathLayers(ctx, path, ppg));
+    const depth = Math.max(...layered.map((layers) => layers.length));
+    for (let i = 0; i < depth; i++) {
+      for (const layers of layered) layers[i]?.();
+    }
+  }
+}
+
+// Paint steps of one path, bottom to top.
+function pathLayers(
+  ctx: CanvasRenderingContext2D,
+  path: PathItem,
+  ppg: number
+): (() => void)[] {
+  const w = path.width * ppg;
+  const line = samplePath(path);
+  const layers: (() => void)[] = [];
+  const paint = (style: string | CanvasPattern, width: number, dash: number[] = []) => {
+    layers.push(() => {
+      ctx.save();
+      ctx.lineCap = path.fadeEnds ? 'round' : 'butt';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = style;
+      ctx.lineWidth = width;
+      ctx.setLineDash(dash);
+      tracePolyline(ctx, line, ppg);
+      ctx.stroke();
+      ctx.restore();
+    });
+  };
+
+  if (path.style === 'dirt_road') {
+    paint('rgba(138, 118, 86, 0.5)', w * 1.25);
+    paint('#9e8863', w);
+  } else if (path.style === 'cobble_path') {
+    const pat = getTexturePattern(ctx, 'terrain', 'cobblestone', ppg / 140);
+    paint('rgba(30,28,25,0.55)', w + 4);
+    paint(pat ?? '#78746e', w);
+  } else if (path.style === 'wood_bridge') {
+    const pat = getTexturePattern(ctx, 'floor', 'wood_planks', ppg / 128);
+    paint('#332011', w + 6);
+    paint(pat ?? '#8a623f', w);
+  } else if (path.style === 'carpet_teal' || path.style === 'carpet_crimson') {
+    paint(path.style === 'carpet_teal' ? '#367d77' : '#852d33', w);
+    paint('#d4b36a', Math.max(2, w * 0.1), [8, 4]);
+  } else if (path.style === 'hedge') {
+    paint('rgba(0,0,0,0.35)', w + 6);
+    paint('#2d5232', w);
+    paint('#487a49', w * 0.6);
+  } else if (path.style === 'rail_tracks') {
+    paint('#5c3c20', w, [4, 8]);
+    paint('#94a3b8', Math.max(2, w * 0.25));
+  } else if (path.style === 'rope_bridge') {
+    paint('#7c532f', w, [8, 3]);
+  } else if (path.style === 'stream_brook') {
+    paint('#1e5b70', w * 1.15);
+    paint('#45a8c4', w * 0.78);
+  } else if (path.style === 'lava_stream') {
+    paint('#4a180d', w * 1.25);
+    paint('#f97316', w * 0.85);
+    paint('#fde047', w * 0.35);
+  } else if (path.style === 'stone_wall_low') {
+    paint('#292724', w + 3);
+    paint('#7d776e', w);
+  } else if (
+    path.style === 'fence_wood' ||
+    path.style === 'fence_picket' ||
+    path.style === 'fence_iron'
+  ) {
+    const isIron = path.style === 'fence_iron';
+    const isPicket = path.style === 'fence_picket';
+    const railW = Math.max(3, Math.min(w * 0.42, ppg * 0.22));
+    // Ground shadow, outer dark stroke, rail core
+    paint('rgba(0, 0, 0, 0.38)', railW + 5);
+    paint(isIron ? '#12151c' : '#26160a', railW + 2.5);
+    paint(isIron ? '#475569' : isPicket ? '#ded6c3' : '#8c5e35', railW);
+    if (isPicket || isIron) {
+      paint(isIron ? '#94a3b8' : '#f5efe2', railW * 1.55, [
+        Math.max(2, ppg * 0.06),
+        Math.max(4, ppg * 0.14),
+      ]);
+    }
+    // Posts at piece ends and every ~1 tile, following the curve
+    const postSize = Math.max(5, railW * 1.75);
+    const drawPost = (px: number, py: number) => {
+      ctx.fillStyle = isIron ? '#334155' : isPicket ? '#e7dfd0' : '#6e4726';
+      ctx.strokeStyle = isIron ? '#0f172a' : '#241408';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      if (isIron) {
+        ctx.arc(px, py, postSize * 0.55, 0, Math.PI * 2);
+      } else {
+        ctx.rect(px - postSize * 0.5, py - postSize * 0.5, postSize, postSize);
+      }
+      ctx.fill();
+      ctx.stroke();
+    };
+    layers.push(() => {
+      ctx.save();
+      for (const seg of pathSegments(path)) {
+        const lengths = seg.slice(1).map((b, i) => Math.hypot(b.x - seg[i].x, b.y - seg[i].y));
+        const total = lengths.reduce((sum, len) => sum + len, 0);
+        const count = Math.max(1, Math.round(total));
+        let piece = 0;
+        let before = 0;
+        for (let k = 0; k < count; k++) {
+          const at = (total * k) / count;
+          while (piece < lengths.length - 1 && before + lengths[piece] < at) {
+            before += lengths[piece++];
+          }
+          const t = lengths[piece] ? (at - before) / lengths[piece] : 0;
+          const a = seg[piece];
+          const b = seg[piece + 1];
+          drawPost((a.x + (b.x - a.x) * t) * ppg, (a.y + (b.y - a.y) * t) * ppg);
+        }
+      }
+      const last = line[line.length - 1];
+      drawPost(last.x * ppg, last.y * ppg);
+      ctx.restore();
+    });
+  } else {
+    // cliff_edge
+    paint('#2d2925', w);
+    paint('#70685e', w * 0.55);
+  }
+
+  return layers;
+}
+
+const pathThumbs = new Map<PathItem['style'], string>();
+
+// Preview of a path style, drawn with the same code as the map.
+export function getPathThumbnail(style: PathItem['style']): string {
+  let url = pathThumbs.get(style);
+  if (!url) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#4c633c';
+    ctx.fillRect(0, 0, 64, 64);
+    const points = [{ x: -0.5, y: 0.5 }, { x: 1.5, y: 0.5 }];
+    drawPaths(
+      ctx,
+      [{ id: 'thumb', points, style, width: 0.7, smooth: false, fadeEnds: false }],
+      64
+    );
+    url = canvas.toDataURL('image/png');
+    pathThumbs.set(style, url);
+  }
+  return url;
 }
 
 function drawWallStroke(
@@ -1229,8 +1202,19 @@ function drawSelectionAndHandles(
     } else if (sel.kind === 'path') {
       const p = level.paths.find((it) => it.id === sel.id);
       if (p) {
-        tracePolyline(ctx, p.points, ppg, p.smooth, false);
+        tracePolyline(ctx, samplePath(p), ppg);
         ctx.stroke();
+        if (!p.smooth && items.length === 1) {
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#f0a848';
+          ctx.strokeStyle = '#ffffff';
+          for (const h of bendHandles(p)) {
+            ctx.beginPath();
+            ctx.arc(h.x * ppg, h.y * ppg, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
       }
     } else if (sel.kind === 'roof') {
       const r = level.roofs.find((it) => it.id === sel.id);

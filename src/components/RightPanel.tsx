@@ -903,6 +903,29 @@ export function RightPanel() {
                   <span>Curva Suavizada</span>
                   <span>{selectedPath.smooth ? 'SÍ' : 'NO'}</span>
                 </button>
+                {selectedPath.smooth ? (
+                  <NumberSliderRow
+                    label="Curvatura"
+                    value={selectedPath.curvature ?? 1}
+                    min={0}
+                    max={3}
+                    step={0.1}
+                    decimals={1}
+                    onChange={(v) => updateSelectedPath({ curvature: v }, false)}
+                  />
+                ) : (
+                  <>
+                    <span>Arrastra los puntos naranjas del camino para curvarlo.</span>
+                    {selectedPath.bends?.some(Boolean) && (
+                      <button
+                        className="btn-secondary"
+                        onClick={() => updateSelectedPath({ bends: undefined })}
+                      >
+                        Enderezar tramos
+                      </button>
+                    )}
+                  </>
+                )}
                 <button
                   className={`toggle-btn ${selectedPath.fadeEnds ? 'active' : ''}`}
                   onClick={() =>

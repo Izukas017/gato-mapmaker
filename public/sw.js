@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gato-mapmaker-cache-v4';
+const CACHE_NAME = 'gato-mapmaker-cache-v5';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

@@ -179,6 +179,8 @@ export interface PathItem {
   width: number; // in tiles
   smooth: boolean;
   fadeEnds: boolean;
+  curvature?: number; // used when smooth: 0 straight .. 3 very curved
+  bends?: (Point | null)[]; // used when not smooth: per-segment offset from the chord midpoint
 }
 
 export interface ObjectLightConfig {

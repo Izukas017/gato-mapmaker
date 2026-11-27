@@ -15,6 +15,7 @@ import {
 import { extractOccluderSegments } from '../engine/lighting';
 import { uid } from '../engine/presets';
 import { getPropDefinition, getPropSprite } from '../engine/props';
+import { bendHandles, bendsWithHandle, samplePath } from '../engine/paths';
 import { renderMapScene, traceBrushShape } from '../engine/renderer';
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
@@ -122,7 +123,7 @@ export function MapCanvas() {
   } | null>(null);
 
   const dragRef = useRef<{
-    mode: 'none' | 'pan' | 'move_sel' | 'terrain' | 'water' | 'scatter';
+    mode: 'none' | 'pan' | 'move_sel' | 'terrain' | 'water' | 'scatter' | 'bend';
     startScreenX: number;
     startScreenY: number;
     startPanX: number;
@@ -132,6 +133,7 @@ export function MapCanvas() {
     moved: boolean;
     snapshotDoc?: MapDocument | null;
     anchorOffset?: Point;
+    bendIndex?: number;
   }>({
     mode: 'none',
     startScreenX: 0,
@@ -244,6 +246,16 @@ export function MapCanvas() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
+      if (e.key === 'Escape') {
+        // Drop everything in hand: drawing in progress, selection and the active tool.
+        target?.blur?.();
+        setDraftPoints([]);
+        setRectStart(null);
+        setMarqueeStart(null);
+        setSelection(null);
+        useMapStore.getState().setTool('select');
+        return;
+      }
       if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) {
         return;
       }
@@ -279,12 +291,6 @@ export function MapCanvas() {
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         useMapStore.getState().deleteSelected();
-        return;
-      }
-      if (e.key === 'Escape') {
-        setDraftPoints([]);
-        setRectStart(null);
-        setSelection(null);
         return;
       }
       if (e.key === 'Enter' && draftPoints.length >= 2) {
@@ -418,8 +424,9 @@ export function MapCanvas() {
       // 6. Paths
       for (let i = activeLevel.paths.length - 1; i >= 0; i--) {
         const p = activeLevel.paths[i];
-        for (let k = 0; k < p.points.length - 1; k++) {
-          if (distToSegment(pt, p.points[k], p.points[k + 1]).dist <= p.width * 0.55) {
+        const line = samplePath(p);
+        for (let k = 0; k < line.length - 1; k++) {
+          if (distToSegment(pt, line[k], line[k + 1]).dist <= p.width * 0.55) {
             return { kind: 'path', id: p.id };
           }
         }
@@ -795,6 +802,31 @@ export function MapCanvas() {
 
     if (activeTool === 'select') {
       const touchPad = e.pointerType === 'touch' ? 0.28 : 0;
+      const bendPath =
+        selection?.kind === 'path' && selectedItems.length <= 1
+          ? activeLevel.paths.find((p) => p.id === selection.id && !p.smooth)
+          : undefined;
+      if (bendPath) {
+        const reach = 0.25 + touchPad;
+        const bendIndex = bendHandles(bendPath).findIndex(
+          (h) => Math.hypot(rawTile.x - h.x, rawTile.y - h.y) <= reach
+        );
+        if (bendIndex >= 0) {
+          dragRef.current = {
+            mode: 'bend',
+            startScreenX: e.clientX,
+            startScreenY: e.clientY,
+            startPanX: panX,
+            startPanY: panY,
+            lastTile: rawTile,
+            strokePoints: [],
+            moved: false,
+            snapshotDoc: store.doc,
+            bendIndex,
+          };
+          return;
+        }
+      }
       const hit = hitTest(rawTile, touchPad);
       if (e.ctrlKey || e.metaKey || e.shiftKey) {
         if (hit) {
@@ -1054,6 +1086,20 @@ export function MapCanvas() {
       return;
     }
 
+    if (drag.mode === 'bend') {
+      const state = useMapStore.getState();
+      const level = state.doc.levels.find((l) => l.id === state.doc.activeLevelId);
+      const path = level?.paths.find((p) => p.id === state.selection?.id);
+      if (path && drag.bendIndex !== undefined) {
+        drag.moved = true;
+        state.updateSelectedPath(
+          { bends: bendsWithHandle(path, drag.bendIndex, rawTile) },
+          false
+        );
+      }
+      return;
+    }
+
     if (drag.mode === 'scatter') {
       const dist = Math.hypot(rawTile.x - drag.lastTile.x, rawTile.y - drag.lastTile.y);
       if (dist >= 1.35 * toolSettings.propScale) {
@@ -1094,7 +1140,7 @@ export function MapCanvas() {
 
     if (drag.mode === 'pan') {
       setIsPanning(false);
-    } else if (drag.mode === 'move_sel') {
+    } else if (drag.mode === 'move_sel' || drag.mode === 'bend') {
       if (drag.moved && drag.snapshotDoc) {
         useMapStore.getState().commitSnapshot(drag.snapshotDoc);
       }
