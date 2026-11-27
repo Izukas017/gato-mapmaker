@@ -475,14 +475,23 @@ export function ToolDrawer() {
               />
               <span className="control-val">{ts.waterRadius.toFixed(1)}</span>
             </div>
-            <div className="control-row">
+            <button
+              className={`toggle-btn ${ts.waterDeep ? 'active' : ''}`}
+              onClick={() => updateTs({ waterDeep: !ts.waterDeep })}
+            >
               <span>Agua Profunda</span>
-              <input
-                type="color"
-                value={ts.waterDeepColor}
-                onChange={(e) => updateTs({ waterDeepColor: e.target.value })}
-              />
-            </div>
+              <span>{ts.waterDeep ? 'SÍ' : 'NO'}</span>
+            </button>
+            {ts.waterDeep && (
+              <div className="control-row">
+                <span>Color Profundo</span>
+                <input
+                  type="color"
+                  value={ts.waterDeepColor}
+                  onChange={(e) => updateTs({ waterDeepColor: e.target.value })}
+                />
+              </div>
+            )}
             <div className="control-row">
               <span>Orilla Somera</span>
               <input

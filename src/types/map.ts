@@ -133,6 +133,7 @@ export interface WaterStroke {
   points: Point[];
   radius: number;
   deepColor: string;
+  deep?: boolean; // false = shallow water only (also turns deeper water under it shallow)
   shallowColor: string;
   erase?: boolean;
   shape?: BrushShape;

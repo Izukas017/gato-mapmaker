@@ -312,17 +312,20 @@ function drawWater(
 
   const renderWaterPass = (
     radiusFn: (rPx: number) => number,
-    colorFn: (s: WaterStroke) => string
+    colorFn: (s: WaterStroke) => string,
+    removes: (s: WaterStroke) => boolean = (s) => Boolean(s.erase),
+    alpha = 1
   ) => {
     wctx.clearRect(0, 0, mapW, mapH);
     for (const s of allStrokes) {
       if (s.points.length === 0) continue;
       const rPx = Math.max(2, radiusFn(s.radius * ppg));
       wctx.save();
-      wctx.globalCompositeOperation = s.erase ? 'destination-out' : 'source-over';
+      const cut = removes(s);
+      wctx.globalCompositeOperation = cut ? 'destination-out' : 'source-over';
       wctx.lineCap = 'round';
       wctx.lineJoin = 'round';
-      const col = s.erase ? '#000' : colorFn(s);
+      const col = cut ? '#000' : colorFn(s);
       wctx.fillStyle = col;
       wctx.strokeStyle = col;
       drawStrokeShape(
@@ -336,14 +339,22 @@ function drawWater(
       );
       wctx.restore();
     }
+    // Translucency is applied once to the whole pass, so overlapping strokes never stack it.
+    ctx.save();
+    ctx.globalAlpha *= alpha;
     ctx.drawImage(wc, 0, 0);
+    ctx.restore();
   };
 
   // Unified multi-pass water so overlapping strokes merge seamlessly
-  renderWaterPass((r) => r + ppg * 0.18, () => 'rgba(26, 50, 56, 0.55)');
+  renderWaterPass((r) => r + ppg * 0.18, () => 'rgb(26, 50, 56)', undefined, 0.55);
   renderWaterPass((r) => r + ppg * 0.06, (s) => s.shallowColor);
-  renderWaterPass((r) => r * 0.94, () => 'rgba(218, 246, 252, 0.26)');
-  renderWaterPass((r) => r * 0.72, (s) => s.deepColor);
+  renderWaterPass((r) => r * 0.94, () => 'rgb(218, 246, 252)', undefined, 0.26);
+  renderWaterPass(
+    (r) => r * 0.72,
+    (s) => s.deepColor,
+    (s) => Boolean(s.erase) || s.deep === false
+  );
 }
 
 function drawStrokeShape(

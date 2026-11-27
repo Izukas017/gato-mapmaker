@@ -49,6 +49,7 @@ export interface ToolSettings {
   terrainRectRatio: number;
   // Water
   waterRadius: number;
+  waterDeep: boolean;
   waterDeepColor: string;
   waterShallowColor: string;
   waterErase: boolean;
@@ -261,6 +262,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     terrainBrushAngle: 0,
     terrainRectRatio: 2.0,
     waterRadius: 1.5,
+    waterDeep: true,
     waterDeepColor: '#1a5a6e',
     waterShallowColor: '#3d99ad',
     waterErase: false,
