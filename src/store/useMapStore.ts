@@ -34,6 +34,8 @@ import {
   uid,
 } from '../engine/presets';
 import { PROP_LIGHTS } from '../engine/props';
+import { assignGroup, expandGroups, mergeSelection } from '../engine/merge';
+import { visibleContent } from '../engine/selection';
 import { useUiPrefs } from './useUiPrefs';
 
 export interface ToolSettings {
@@ -171,6 +173,8 @@ interface MapStoreState {
   pasteClipboard: (targetTile?: Point | null) => void;
   duplicateSelected: () => void;
   deleteSelected: () => void;
+  mergeSelected: () => void;
+  ungroupSelected: () => void;
 }
 
 const MAX_HISTORY = 40;
@@ -302,28 +306,30 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   updateToolSettings: (patch) =>
     set((s) => ({ toolSettings: { ...s.toolSettings, ...patch } })),
   setSelection: (selection) =>
-    set({
+    set((s) => ({
       selection,
-      selectedItems: selection ? [selection] : [],
-    }),
+      selectedItems: selection ? withGroups(s.doc, [selection]) : [],
+    })),
   toggleSelectionItem: (sel) =>
     set((s) => {
       const exists = s.selectedItems.some(
         (it) => it.kind === sel.kind && it.id === sel.id
       );
-      const next = exists
-        ? s.selectedItems.filter((it) => !(it.kind === sel.kind && it.id === sel.id))
-        : [...s.selectedItems, sel];
+      const group = withGroups(s.doc, [sel]);
+      const inGroup = (it: SelectionRef) =>
+        group.some((g) => g.kind === it.kind && g.id === it.id);
+      const rest = s.selectedItems.filter((it) => !inGroup(it));
+      const next = exists ? rest : [...rest, ...group];
       return {
         selectedItems: next,
         selection: next.length > 0 ? next[next.length - 1] : null,
       };
     }),
   setSelectedItems: (items) =>
-    set({
-      selectedItems: items,
+    set((s) => ({
+      selectedItems: withGroups(s.doc, items),
       selection: items.length > 0 ? items[items.length - 1] : null,
-    }),
+    })),
   setViewport: (zoom, panX, panY) => set({ zoom, panX, panY }),
   setCursorTile: (cursorTile) => set({ cursorTile }),
 
@@ -387,12 +393,22 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     })),
 
   toggleLayer: (key) =>
-    set((s) => ({
-      doc: {
+    set((s) => {
+      const doc = {
         ...s.doc,
         layers: { ...s.doc.layers, [key]: !s.doc.layers[key] },
-      },
-    })),
+      };
+      // Whatever just got hidden drops out of the selection.
+      const level = doc.levels.find((l) => l.id === doc.activeLevelId) ?? doc.levels[0];
+      const visible = visibleContent(level, doc.layers);
+      const shown = (ref: SelectionRef) =>
+        visible[`${ref.kind}s`].some((it) => it.id === ref.id);
+      return {
+        doc,
+        selection: s.selection && shown(s.selection) ? s.selection : null,
+        selectedItems: s.selectedItems.filter(shown),
+      };
+    }),
 
   setActiveLevel: (id) =>
     set((s) => ({ doc: { ...s.doc, activeLevelId: id }, selection: null })),
@@ -961,6 +977,18 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
         }
       }
 
+      // Pasted groups are new groups, not more members of the copied one.
+      const groups = new Map<string, string>();
+      for (const list of [
+        newObjects, newLights, newPortals, newRooms, newWalls, newPaths, newRoofs,
+      ]) {
+        for (const it of list) {
+          if (!it.groupId) continue;
+          if (!groups.has(it.groupId)) groups.set(it.groupId, uid('grp'));
+          it.groupId = groups.get(it.groupId);
+        }
+      }
+
       const nextDoc = updateActiveLevel(s.doc, (l) => ({
         ...l,
         objects: [...l.objects, ...newObjects],
@@ -985,6 +1013,31 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     s.copySelected();
     get().pasteClipboard(null);
   },
+
+  mergeSelected: () =>
+    set((s) => {
+      if (s.selectedItems.length < 2) return s;
+      let selected = s.selectedItems;
+      const next = updateActiveLevel(s.doc, (l) => {
+        const merged = mergeSelection(l, s.selectedItems, uid('grp'));
+        selected = merged.selected;
+        return merged.level;
+      });
+      return {
+        ...pushCommit(s, next),
+        selectedItems: selected,
+        selection: selected[0] ?? null,
+      };
+    }),
+
+  ungroupSelected: () =>
+    set((s) => {
+      if (s.selectedItems.length === 0) return s;
+      return pushCommit(
+        s,
+        updateActiveLevel(s.doc, (l) => assignGroup(l, s.selectedItems, undefined))
+      );
+    }),
 
   deleteSelected: () =>
     set((s) => {
@@ -1019,6 +1072,11 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       return { ...pushCommit(s, next), selection: null, selectedItems: [] };
     }),
 }));
+
+function withGroups(doc: MapDocument, refs: SelectionRef[]): SelectionRef[] {
+  const level = doc.levels.find((l) => l.id === doc.activeLevelId) ?? doc.levels[0];
+  return expandGroups(visibleContent(level, doc.layers), refs);
+}
 
 // Auto-save the active map to localStorage whenever the document changes
 let saveTimer: ReturnType<typeof setTimeout> | null = null;

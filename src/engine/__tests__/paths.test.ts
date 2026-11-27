@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { PathItem } from '../../types/map';
-import { bendHandles, bendsWithHandle, polylineTouchesRect, samplePath } from '../paths';
+import {
+  bendHandles,
+  bendsWithHandle,
+  offsetLine,
+  polylineTouchesRect,
+  samplePath,
+  spacedAlong,
+} from '../paths';
 
 const base: PathItem = {
   id: 'p',
@@ -48,5 +55,21 @@ describe('Box selection of walls', () => {
   it('counts the closing segment only on closed walls', () => {
     expect(touches(-1, 1, 1, 2)).toBe(false);
     expect(touches(-1, 1, 1, 2, true)).toBe(true);
+  });
+});
+
+describe('Rail geometry', () => {
+  const corner = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }];
+
+  it('keeps a parallel rail at the same distance through a corner', () => {
+    expect(offsetLine(corner, 1)).toEqual([{ x: 0, y: 1 }, { x: 3, y: 1 }, { x: 3, y: 4 }]);
+  });
+
+  it('places sleepers evenly with a perpendicular normal', () => {
+    const marks = spacedAlong(corner, 2);
+    expect(marks.map((m) => m.at)).toEqual([
+      { x: 1, y: 0 }, { x: 3, y: 0 }, { x: 4, y: 1 }, { x: 4, y: 3 },
+    ]);
+    expect(marks[2].normal.x).toBeCloseTo(-1);
   });
 });

@@ -99,6 +99,14 @@ export function RightPanel() {
   const selectedItems = useMapStore((s) => s.selectedItems);
   const copySelected = useMapStore((s) => s.copySelected);
   const alignSelected = useMapStore((s) => s.alignSelected);
+  const mergeSelected = useMapStore((s) => s.mergeSelected);
+  const ungroupSelected = useMapStore((s) => s.ungroupSelected);
+  const grouped = useMapStore((s) => {
+    const level = s.doc.levels.find((l) => l.id === s.doc.activeLevelId);
+    return s.selectedItems.some((ref) =>
+      level?.[`${ref.kind}s`].some((it) => it.id === ref.id && it.groupId)
+    );
+  });
 
   const toggleLayer = useMapStore((s) => s.toggleLayer);
   const updateAmbient = useMapStore((s) => s.updateAmbient);
@@ -305,6 +313,29 @@ export function RightPanel() {
                 >
                   Alinear Vert. (|)
                 </button>
+              </div>
+            )}
+
+            {selectedItems.length >= 2 && (
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  className="btn-secondary"
+                  style={{ flex: 1, padding: '4px 6px', fontSize: 11 }}
+                  onClick={mergeSelected}
+                  title="Une las piezas iguales y copia lo compartible del primero que seleccionaste"
+                >
+                  Fusionar
+                </button>
+                {grouped && (
+                  <button
+                    className="btn-secondary"
+                    style={{ flex: 1, padding: '4px 6px', fontSize: 11 }}
+                    onClick={ungroupSelected}
+                    title="Deshace el grupo"
+                  >
+                    Separar
+                  </button>
+                )}
               </div>
             )}
 

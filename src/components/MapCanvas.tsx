@@ -18,9 +18,9 @@ import { getPropDefinition, getPropSprite } from '../engine/props';
 import {
   bendHandles,
   bendsWithHandle,
-  polylineTouchesRect,
   samplePath,
 } from '../engine/paths';
+import { boxSelect, visibleContent } from '../engine/selection';
 import { renderMapScene, traceBrushShape } from '../engine/renderer';
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
@@ -381,23 +381,24 @@ export function MapCanvas() {
   // Hit-testing for Select tool
   const hitTest = useCallback(
     (pt: Point, touchPad = 0): SelectionRef | null => {
+      const level = visibleContent(activeLevel, doc.layers);
       // 1. Lights
-      for (let i = activeLevel.lights.length - 1; i >= 0; i--) {
-        const l = activeLevel.lights[i];
+      for (let i = level.lights.length - 1; i >= 0; i--) {
+        const l = level.lights[i];
         if (Math.hypot(pt.x - l.x, pt.y - l.y) <= 0.45 + touchPad) {
           return { kind: 'light', id: l.id };
         }
       }
       // 2. Portals
-      for (let i = activeLevel.portals.length - 1; i >= 0; i--) {
-        const p = activeLevel.portals[i];
+      for (let i = level.portals.length - 1; i >= 0; i--) {
+        const p = level.portals[i];
         if (Math.hypot(pt.x - p.x, pt.y - p.y) <= Math.max(0.5, p.width * 0.5) + touchPad) {
           return { kind: 'portal', id: p.id };
         }
       }
       // 3. Objects (top-most first)
-      for (let i = activeLevel.objects.length - 1; i >= 0; i--) {
-        const o = activeLevel.objects[i];
+      for (let i = level.objects.length - 1; i >= 0; i--) {
+        const o = level.objects[i];
         const def = getPropDefinition(o.propId, doc.customAssets);
         const rx = ((def?.widthTiles ?? 1) * Math.abs(o.scaleX)) / 2 + touchPad;
         const ry = ((def?.heightTiles ?? 1) * Math.abs(o.scaleY)) / 2 + touchPad;
@@ -412,14 +413,14 @@ export function MapCanvas() {
         }
       }
       // 4. Roofs
-      for (let i = activeLevel.roofs.length - 1; i >= 0; i--) {
-        if (pointInPolygon(pt, activeLevel.roofs[i].points)) {
-          return { kind: 'roof', id: activeLevel.roofs[i].id };
+      for (let i = level.roofs.length - 1; i >= 0; i--) {
+        if (pointInPolygon(pt, level.roofs[i].points)) {
+          return { kind: 'roof', id: level.roofs[i].id };
         }
       }
       // 5. Walls
-      for (let i = activeLevel.walls.length - 1; i >= 0; i--) {
-        const w = activeLevel.walls[i];
+      for (let i = level.walls.length - 1; i >= 0; i--) {
+        const w = level.walls[i];
         const segments = w.closed ? w.points.length : w.points.length - 1;
         for (let k = 0; k < segments; k++) {
           if (distToSegment(pt, w.points[k], w.points[(k + 1) % w.points.length]).dist <= 0.35) {
@@ -428,8 +429,8 @@ export function MapCanvas() {
         }
       }
       // 6. Paths
-      for (let i = activeLevel.paths.length - 1; i >= 0; i--) {
-        const p = activeLevel.paths[i];
+      for (let i = level.paths.length - 1; i >= 0; i--) {
+        const p = level.paths[i];
         const line = samplePath(p);
         for (let k = 0; k < line.length - 1; k++) {
           if (distToSegment(pt, line[k], line[k + 1]).dist <= p.width * 0.55) {
@@ -438,14 +439,14 @@ export function MapCanvas() {
         }
       }
       // 7. Rooms
-      for (let i = activeLevel.rooms.length - 1; i >= 0; i--) {
-        if (pointInPolygon(pt, activeLevel.rooms[i].points)) {
-          return { kind: 'room', id: activeLevel.rooms[i].id };
+      for (let i = level.rooms.length - 1; i >= 0; i--) {
+        if (pointInPolygon(pt, level.rooms[i].points)) {
+          return { kind: 'room', id: level.rooms[i].id };
         }
       }
       return null;
     },
-    [activeLevel, doc.customAssets]
+    [activeLevel, doc.customAssets, doc.layers]
   );
 
   // Main render loop
@@ -526,7 +527,8 @@ export function MapCanvas() {
       selection,
       selectedItems,
       showLightHandles:
-        alwaysShowLightHandles || activeTool === 'light' || activeTool === 'select',
+        activeTool === 'light' ||
+        (doc.layers.lighting && (alwaysShowLightHandles || activeTool === 'select')),
       previewTerrainStroke,
       previewWaterStroke,
       onAssetLoaded: () => setRenderTick((t) => t + 1),
@@ -847,6 +849,13 @@ export function MapCanvas() {
         const alreadyIn = selectedItems.some(
           (it) => it.kind === hit.kind && it.id === hit.id
         );
+        // Dragging from a large shape draws a selection box; a plain click still selects it.
+        const large = ['room', 'roof', 'wall', 'path'].includes(hit.kind);
+        if (!alreadyIn && large) {
+          setSelection(null);
+          setMarqueeStart(rawTile);
+          return;
+        }
         if (!alreadyIn) {
           setSelection(hit);
         }
@@ -1184,29 +1193,11 @@ export function MapCanvas() {
       const minY = Math.min(marqueeStart.y, rawTile.y);
       const maxY = Math.max(marqueeStart.y, rawTile.y);
       if (maxX - minX > 0.25 || maxY - minY > 0.25) {
-        const boxed: SelectionRef[] = [];
-        for (const o of activeLevel.objects) {
-          if (o.x >= minX && o.x <= maxX && o.y >= minY && o.y <= maxY) {
-            boxed.push({ kind: 'object', id: o.id });
-          }
-        }
-        for (const l of activeLevel.lights) {
-          if (l.x >= minX && l.x <= maxX && l.y >= minY && l.y <= maxY) {
-            boxed.push({ kind: 'light', id: l.id });
-          }
-        }
-        for (const p of activeLevel.portals) {
-          if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) {
-            boxed.push({ kind: 'portal', id: p.id });
-          }
-        }
-        const boxMin = { x: minX, y: minY };
-        const boxMax = { x: maxX, y: maxY };
-        for (const w of activeLevel.walls) {
-          if (polylineTouchesRect(w.points, w.closed, boxMin, boxMax)) {
-            boxed.push({ kind: 'wall', id: w.id });
-          }
-        }
+        const boxed = boxSelect(
+          visibleContent(activeLevel, doc.layers),
+          { x: minX, y: minY },
+          { x: maxX, y: maxY }
+        );
         if (e.ctrlKey || e.metaKey || e.shiftKey) {
           const merged = [...selectedItems];
           for (const b of boxed) {
@@ -1218,6 +1209,8 @@ export function MapCanvas() {
         } else {
           setSelectedItems(boxed);
         }
+      } else if (!(e.ctrlKey || e.metaKey || e.shiftKey)) {
+        setSelection(hitTest(marqueeStart));
       }
       setMarqueeStart(null);
     }

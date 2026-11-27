@@ -142,6 +142,7 @@ export interface WaterStroke {
 
 export interface RoomShape {
   id: string;
+  groupId?: string; // merged elements are selected and moved together
   points: Point[]; // closed polygon in tiles
   floor: FloorPatternId;
   floorTint?: string;
@@ -153,6 +154,7 @@ export interface RoomShape {
 
 export interface WallPolyline {
   id: string;
+  groupId?: string; // merged elements are selected and moved together
   points: Point[];
   closed: boolean;
   style: WallStyleId;
@@ -162,6 +164,7 @@ export interface WallPolyline {
 
 export interface PortalItem {
   id: string;
+  groupId?: string; // merged elements are selected and moved together
   x: number;
   y: number;
   angle: number; // radians
@@ -174,6 +177,7 @@ export interface PortalItem {
 
 export interface PathItem {
   id: string;
+  groupId?: string; // merged elements are selected and moved together
   points: Point[];
   style: PathStyleId;
   width: number; // in tiles
@@ -193,6 +197,7 @@ export interface ObjectLightConfig {
 
 export interface MapObject {
   id: string;
+  groupId?: string; // merged elements are selected and moved together
   propId: string; // built-in prop id or custom:<id>
   x: number;
   y: number;
@@ -209,6 +214,7 @@ export interface MapObject {
 
 export interface LightSource {
   id: string;
+  groupId?: string; // merged elements are selected and moved together
   x: number;
   y: number;
   color: string; // hex
@@ -220,6 +226,7 @@ export interface LightSource {
 
 export interface RoofShape {
   id: string;
+  groupId?: string; // merged elements are selected and moved together
   points: Point[];
   style: RoofStyleId;
   ridgeAngle: number; // radians

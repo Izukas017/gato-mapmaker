@@ -18,7 +18,13 @@ import {
   getCachedVisibilityPolygon,
   hexToRgb,
 } from './lighting';
-import { bendHandles, pathSegments, samplePath } from './paths';
+import {
+  bendHandles,
+  offsetLine,
+  pathSegments,
+  samplePath,
+  spacedAlong,
+} from './paths';
 import {
   getCustomImage,
   getPropDefinition,
@@ -468,7 +474,12 @@ function pathLayers(
   const w = path.width * ppg;
   const line = samplePath(path);
   const layers: (() => void)[] = [];
-  const paint = (style: string | CanvasPattern, width: number, dash: number[] = []) => {
+  const paint = (
+    style: string | CanvasPattern,
+    width: number,
+    dash: number[] = [],
+    points: Point[] = line
+  ) => {
     layers.push(() => {
       ctx.save();
       ctx.lineCap = path.fadeEnds ? 'round' : 'butt';
@@ -476,7 +487,7 @@ function pathLayers(
       ctx.strokeStyle = style;
       ctx.lineWidth = width;
       ctx.setLineDash(dash);
-      tracePolyline(ctx, line, ppg);
+      tracePolyline(ctx, points, ppg);
       ctx.stroke();
       ctx.restore();
     });
@@ -501,8 +512,37 @@ function pathLayers(
     paint('#2d5232', w);
     paint('#487a49', w * 0.6);
   } else if (path.style === 'rail_tracks') {
-    paint('#5c3c20', w, [4, 8]);
-    paint('#94a3b8', Math.max(2, w * 0.25));
+    // Gravel bed, wooden sleepers, then two steel rails. Sizes follow the path width (in tiles).
+    paint('#3d3933', w * 1.08);
+    paint('#6a645a', w * 0.94);
+    paint('#827b6f', w * 0.9, [2, 5]);
+    const sleepers = spacedAlong(line, Math.max(0.28, path.width * 0.3));
+    const half = path.width * 0.42;
+    const sleeper = (color: string, thickness: number) => {
+      layers.push(() => {
+        ctx.save();
+        ctx.lineCap = 'butt';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = thickness;
+        ctx.beginPath();
+        for (const { at, normal } of sleepers) {
+          ctx.moveTo((at.x - normal.x * half) * ppg, (at.y - normal.y * half) * ppg);
+          ctx.lineTo((at.x + normal.x * half) * ppg, (at.y + normal.y * half) * ppg);
+        }
+        ctx.stroke();
+        ctx.restore();
+      });
+    };
+    sleeper('#26180d', w * 0.17);
+    sleeper('#6e4a2a', w * 0.12);
+    const rails = [-1, 1].map((side) => offsetLine(line, side * path.width * 0.25));
+    for (const [color, width] of [
+      ['#1b1d21', 0.12],
+      ['#7d8794', 0.075],
+      ['#d5dbe3', 0.025],
+    ] as const) {
+      for (const rail of rails) paint(color, Math.max(1, w * width), [], rail);
+    }
   } else if (path.style === 'rope_bridge') {
     paint('#7c532f', w, [8, 3]);
   } else if (path.style === 'stream_brook') {

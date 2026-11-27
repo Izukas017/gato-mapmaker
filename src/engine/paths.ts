@@ -124,3 +124,41 @@ export function polylineTouchesRect(
   }
   return false;
 }
+
+function normal(a: Point, b: Point): Point {
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  return { x: (a.y - b.y) / len, y: (b.x - a.x) / len };
+}
+
+// A line running parallel to the polyline, `distance` to one side (mitred at corners).
+export function offsetLine(line: Point[], distance: number): Point[] {
+  return line.map((p, i) => {
+    const before = i > 0 ? normal(line[i - 1], p) : normal(p, line[i + 1]);
+    const after = i < line.length - 1 ? normal(p, line[i + 1]) : before;
+    // The clamp keeps hairpin corners from shooting the mitre far away.
+    const scale = distance / Math.max(0.5, 1 + before.x * after.x + before.y * after.y);
+    return { x: p.x + (before.x + after.x) * scale, y: p.y + (before.y + after.y) * scale };
+  });
+}
+
+// Points evenly spaced along the polyline, each with the unit normal of the line there.
+export function spacedAlong(line: Point[], spacing: number): { at: Point; normal: Point }[] {
+  const out: { at: Point; normal: Point }[] = [];
+  let next = spacing / 2;
+  let walked = 0;
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1];
+    const b = line[i];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    while (len > 0 && next <= walked + len) {
+      const t = (next - walked) / len;
+      out.push({
+        at: { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t },
+        normal: normal(a, b),
+      });
+      next += spacing;
+    }
+    walked += len;
+  }
+  return out;
+}
