@@ -25,6 +25,14 @@ export type TerrainMaterialId =
   | 'mud'
   | 'snow';
 
+export type BrushShape =
+  | 'circle'
+  | 'square'
+  | 'rectangle'
+  | 'hexagon'
+  | 'diamond'
+  | 'octagon';
+
 export type FloorPatternId =
   | 'wood_planks'
   | 'herringbone'
@@ -74,6 +82,9 @@ export interface TerrainStroke {
   radius: number; // in tiles
   opacity: number; // 0..1
   softness: number; // 0..1
+  shape?: BrushShape;
+  shapeAngle?: number; // degrees
+  rectRatio?: number; // width/height ratio for rectangle
 }
 
 export interface WaterStroke {
@@ -83,6 +94,9 @@ export interface WaterStroke {
   deepColor: string;
   shallowColor: string;
   erase?: boolean;
+  shape?: BrushShape;
+  shapeAngle?: number;
+  rectRatio?: number;
 }
 
 export interface RoomShape {

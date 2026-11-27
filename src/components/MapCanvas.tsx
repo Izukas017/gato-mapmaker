@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { extractOccluderSegments } from '../engine/lighting';
 import { uid } from '../engine/presets';
 import { getPropDefinition, getPropSprite } from '../engine/props';
-import { renderMapScene } from '../engine/renderer';
+import { renderMapScene, traceBrushShape } from '../engine/renderer';
 import { useMapStore } from '../store/useMapStore';
 import type { MapLevel, Point, SelectionRef } from '../types/map';
 
@@ -377,6 +377,9 @@ export function MapCanvas() {
             radius: toolSettings.terrainRadius,
             opacity: toolSettings.terrainOpacity,
             softness: toolSettings.terrainSoftness,
+            shape: toolSettings.terrainBrushShape,
+            shapeAngle: toolSettings.terrainBrushAngle,
+            rectRatio: toolSettings.terrainRectRatio,
           }
         : null;
 
@@ -389,6 +392,9 @@ export function MapCanvas() {
             deepColor: toolSettings.waterDeepColor,
             shallowColor: toolSettings.waterShallowColor,
             erase: toolSettings.waterErase,
+            shape: toolSettings.waterBrushShape,
+            shapeAngle: toolSettings.waterBrushAngle,
+            rectRatio: toolSettings.waterRectRatio,
           }
         : null;
 
@@ -414,31 +420,32 @@ export function MapCanvas() {
       const snapped = snapPoint(hoverTile, doc.grid.snap, doc.grid.snapSubdivision);
 
       if (activeTool === 'terrain' || activeTool === 'water') {
-        const r =
-          (activeTool === 'terrain' ? toolSettings.terrainRadius : toolSettings.waterRadius) *
-          ppg;
+        const isTerrain = activeTool === 'terrain';
+        const r = (isTerrain ? toolSettings.terrainRadius : toolSettings.waterRadius) * ppg;
+        const shape = isTerrain ? toolSettings.terrainBrushShape : toolSettings.waterBrushShape;
+        const angle = isTerrain ? toolSettings.terrainBrushAngle : toolSettings.waterBrushAngle;
+        const ratio = isTerrain ? toolSettings.terrainRectRatio : toolSettings.waterRectRatio;
         ctx.save();
-        ctx.strokeStyle =
-          activeTool === 'water'
-            ? toolSettings.waterErase
-              ? '#f0706c'
-              : '#4dc8db'
-            : '#f0a848';
+        ctx.strokeStyle = !isTerrain
+          ? toolSettings.waterErase
+            ? '#f0706c'
+            : '#4dc8db'
+          : '#f0a848';
         ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(hoverTile.x * ppg, hoverTile.y * ppg, r, 0, Math.PI * 2);
+        traceBrushShape(ctx, hoverTile.x * ppg, hoverTile.y * ppg, r, shape, angle, ratio);
         ctx.stroke();
         // Inner softness ring for terrain brush
-        if (activeTool === 'terrain' && toolSettings.terrainSoftness > 0.05) {
+        if (isTerrain && toolSettings.terrainSoftness > 0.05) {
           ctx.setLineDash([4, 4]);
           ctx.globalAlpha = 0.5;
-          ctx.beginPath();
-          ctx.arc(
+          traceBrushShape(
+            ctx,
             hoverTile.x * ppg,
             hoverTile.y * ppg,
-            r * Math.max(0.05, 1 - toolSettings.terrainSoftness * 0.85),
-            0,
-            Math.PI * 2
+            r * Math.max(0.1, 1 - toolSettings.terrainSoftness * 0.72),
+            shape,
+            angle,
+            ratio
           );
           ctx.stroke();
         }
@@ -801,6 +808,9 @@ export function MapCanvas() {
         radius: toolSettings.terrainRadius,
         opacity: toolSettings.terrainOpacity,
         softness: toolSettings.terrainSoftness,
+        shape: toolSettings.terrainBrushShape,
+        shapeAngle: toolSettings.terrainBrushAngle,
+        rectRatio: toolSettings.terrainRectRatio,
       });
     } else if (drag.mode === 'water' && drag.strokePoints.length > 0) {
       useMapStore.getState().addWaterStroke({
@@ -810,6 +820,9 @@ export function MapCanvas() {
         deepColor: toolSettings.waterDeepColor,
         shallowColor: toolSettings.waterShallowColor,
         erase: toolSettings.waterErase,
+        shape: toolSettings.waterBrushShape,
+        shapeAngle: toolSettings.waterBrushAngle,
+        rectRatio: toolSettings.waterRectRatio,
       });
     }
 
@@ -848,13 +861,27 @@ export function MapCanvas() {
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault();
-    // Shift + wheel rotates active prop
-    if (e.shiftKey && activeTool === 'object') {
+    // Shift + wheel rotates active prop or brush shape
+    if (e.shiftKey) {
       const step = e.deltaY > 0 ? 15 : -15;
-      updateToolSettings({
-        propRotationDeg: (toolSettings.propRotationDeg + step + 360) % 360,
-      });
-      return;
+      if (activeTool === 'object') {
+        updateToolSettings({
+          propRotationDeg: (toolSettings.propRotationDeg + step + 360) % 360,
+        });
+        return;
+      }
+      if (activeTool === 'terrain' && toolSettings.terrainBrushShape !== 'circle') {
+        updateToolSettings({
+          terrainBrushAngle: (toolSettings.terrainBrushAngle + step + 360) % 360,
+        });
+        return;
+      }
+      if (activeTool === 'water' && toolSettings.waterBrushShape !== 'circle') {
+        updateToolSettings({
+          waterBrushAngle: (toolSettings.waterBrushAngle + step + 360) % 360,
+        });
+        return;
+      }
     }
 
     const rect = canvasRef.current?.getBoundingClientRect();

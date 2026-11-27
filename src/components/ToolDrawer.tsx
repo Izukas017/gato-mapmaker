@@ -15,11 +15,21 @@ import {
 } from '../engine/textures';
 import { useMapStore } from '../store/useMapStore';
 import type {
+  BrushShape,
   PathStyleId,
   PortalKind,
   PropCategory,
   PropLayer,
 } from '../types/map';
+
+const BRUSH_SHAPES: { id: BrushShape; label: string; icon: string }[] = [
+  { id: 'circle', label: 'Circular', icon: '●' },
+  { id: 'square', label: 'Cuadrado', icon: '■' },
+  { id: 'rectangle', label: 'Rectangular', icon: '▬' },
+  { id: 'hexagon', label: 'Hexagonal', icon: '⬢' },
+  { id: 'diamond', label: 'Rombo', icon: '◆' },
+  { id: 'octagon', label: 'Octogonal', icon: '⯃' },
+];
 
 const PORTAL_LIST: { id: PortalKind; label: string }[] = [
   { id: 'door_wood', label: 'Puerta Madera' },
@@ -174,8 +184,54 @@ export function ToolDrawer() {
               </div>
             </div>
 
+            <div>
+              <div className="section-label">Forma del Pincel</div>
+              <div className="chip-row">
+                {BRUSH_SHAPES.map((b) => (
+                  <button
+                    key={b.id}
+                    className={`chip ${ts.terrainBrushShape === b.id ? 'active' : ''}`}
+                    onClick={() => updateTs({ terrainBrushShape: b.id })}
+                  >
+                    <span style={{ marginRight: 4 }}>{b.icon}</span>
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {ts.terrainBrushShape !== 'circle' && (
+              <div className="control-row">
+                <span>Rotación</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={345}
+                  step={15}
+                  value={ts.terrainBrushAngle}
+                  onChange={(e) => updateTs({ terrainBrushAngle: parseInt(e.target.value, 10) })}
+                />
+                <span className="control-val">{ts.terrainBrushAngle}°</span>
+              </div>
+            )}
+
+            {ts.terrainBrushShape === 'rectangle' && (
+              <div className="control-row">
+                <span>Proporción</span>
+                <input
+                  type="range"
+                  min={1.2}
+                  max={4.0}
+                  step={0.1}
+                  value={ts.terrainRectRatio}
+                  onChange={(e) => updateTs({ terrainRectRatio: parseFloat(e.target.value) })}
+                />
+                <span className="control-val">{ts.terrainRectRatio.toFixed(1)}:1</span>
+              </div>
+            )}
+
             <div className="control-row">
-              <span>Radio</span>
+              <span>Tamaño</span>
               <input
                 type="range"
                 min={0.5}
@@ -243,8 +299,51 @@ export function ToolDrawer() {
               <span>Modo Borrador de Agua</span>
               <span>{ts.waterErase ? 'ON' : 'OFF'}</span>
             </button>
+            <div>
+              <div className="section-label">Forma del Pincel</div>
+              <div className="chip-row">
+                {BRUSH_SHAPES.map((b) => (
+                  <button
+                    key={b.id}
+                    className={`chip ${ts.waterBrushShape === b.id ? 'active' : ''}`}
+                    onClick={() => updateTs({ waterBrushShape: b.id })}
+                  >
+                    <span style={{ marginRight: 4 }}>{b.icon}</span>
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {ts.waterBrushShape !== 'circle' && (
+              <div className="control-row">
+                <span>Rotación</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={345}
+                  step={15}
+                  value={ts.waterBrushAngle}
+                  onChange={(e) => updateTs({ waterBrushAngle: parseInt(e.target.value, 10) })}
+                />
+                <span className="control-val">{ts.waterBrushAngle}°</span>
+              </div>
+            )}
+            {ts.waterBrushShape === 'rectangle' && (
+              <div className="control-row">
+                <span>Proporción</span>
+                <input
+                  type="range"
+                  min={1.2}
+                  max={4.0}
+                  step={0.1}
+                  value={ts.waterRectRatio}
+                  onChange={(e) => updateTs({ waterRectRatio: parseFloat(e.target.value) })}
+                />
+                <span className="control-val">{ts.waterRectRatio.toFixed(1)}:1</span>
+              </div>
+            )}
             <div className="control-row">
-              <span>Radio</span>
+              <span>Tamaño</span>
               <input
                 type="range"
                 min={0.4}

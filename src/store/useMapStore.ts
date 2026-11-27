@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type {
   AmbientSettings,
+  BrushShape,
   CustomAsset,
   FloorPatternId,
   GridSettings,
@@ -38,11 +39,17 @@ export interface ToolSettings {
   terrainRadius: number;
   terrainOpacity: number;
   terrainSoftness: number;
+  terrainBrushShape: BrushShape;
+  terrainBrushAngle: number;
+  terrainRectRatio: number;
   // Water
   waterRadius: number;
   waterDeepColor: string;
   waterShallowColor: string;
   waterErase: boolean;
+  waterBrushShape: BrushShape;
+  waterBrushAngle: number;
+  waterRectRatio: number;
   // Building / Room
   buildingMode: 'rect' | 'polygon';
   floorPattern: FloorPatternId;
@@ -209,10 +216,16 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     terrainRadius: 1.8,
     terrainOpacity: 1.0,
     terrainSoftness: 0.35,
+    terrainBrushShape: 'circle',
+    terrainBrushAngle: 0,
+    terrainRectRatio: 2.0,
     waterRadius: 1.5,
     waterDeepColor: '#1a5a6e',
     waterShallowColor: '#3d99ad',
     waterErase: false,
+    waterBrushShape: 'circle',
+    waterBrushAngle: 0,
+    waterRectRatio: 2.0,
     buildingMode: 'rect',
     floorPattern: 'wood_planks',
     buildingWallStyle: 'stone_hewn',

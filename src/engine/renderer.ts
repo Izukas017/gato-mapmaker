@@ -1,4 +1,5 @@
 import type {
+  BrushShape,
   CustomAsset,
   MapDocument,
   MapLevel,
@@ -89,6 +90,56 @@ function tracePolyline(
   if (closed) ctx.closePath();
 }
 
+export function traceBrushShape(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radiusPx: number,
+  shape: BrushShape = 'circle',
+  angleDeg = 0,
+  rectRatio = 2.0
+) {
+  ctx.beginPath();
+  if (shape === 'circle') {
+    ctx.arc(cx, cy, radiusPx, 0, Math.PI * 2);
+    return;
+  }
+
+  const rad = (angleDeg * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+
+  if (shape === 'square' || shape === 'rectangle') {
+    const hw = radiusPx;
+    const hh = shape === 'rectangle' ? radiusPx / Math.max(1.1, rectRatio) : radiusPx;
+    const corners = [
+      [-hw, -hh],
+      [hw, -hh],
+      [hw, hh],
+      [-hw, hh],
+    ];
+    corners.forEach(([x, y], idx) => {
+      const rx = cx + x * cos - y * sin;
+      const ry = cy + x * sin + y * cos;
+      if (idx === 0) ctx.moveTo(rx, ry);
+      else ctx.lineTo(rx, ry);
+    });
+    ctx.closePath();
+    return;
+  }
+
+  const sides = shape === 'diamond' ? 4 : shape === 'hexagon' ? 6 : 8;
+  const baseOffset = shape === 'octagon' ? Math.PI / 8 : 0;
+  for (let i = 0; i < sides; i++) {
+    const a = rad + baseOffset + (i * Math.PI * 2) / sides;
+    const vx = cx + Math.cos(a) * radiusPx;
+    const vy = cy + Math.sin(a) * radiusPx;
+    if (i === 0) ctx.moveTo(vx, vy);
+    else ctx.lineTo(vx, vy);
+  }
+  ctx.closePath();
+}
+
 function drawTerrainStrokeFeathered(
   ctx: CanvasRenderingContext2D,
   stroke: TerrainStroke,
@@ -99,8 +150,11 @@ function drawTerrainStrokeFeathered(
 ) {
   if (stroke.points.length === 0) return;
 
+  const shape = stroke.shape ?? 'circle';
+  const angleDeg = stroke.shapeAngle ?? 0;
+  const rectRatio = stroke.rectRatio ?? 2.0;
   const r = Math.max(4, stroke.radius * ppg);
-  const pad = Math.ceil(r + 4);
+  const pad = Math.ceil(r * 1.45 + 6);
 
   let minX = Infinity;
   let minY = Infinity;
@@ -127,20 +181,34 @@ function drawTerrainStrokeFeathered(
   const mctx = strokeMaskCanvas.getContext('2d')!;
   mctx.clearRect(0, 0, bw, bh);
 
-  // 1. Paint soft radial dabs along the interpolated path (crisp texture, feathered edge)
-  const innerFrac = Math.max(0.05, 1 - stroke.softness * 0.85);
-  const step = Math.max(2, r * 0.28);
+  // 1. Paint soft radial or geometric dabs along the interpolated path
+  const innerFrac = Math.max(0.1, 1 - stroke.softness * 0.72);
+  const step = Math.max(2, r * 0.25);
 
   const stampDab = (wx: number, wy: number) => {
     const lx = wx - bx;
     const ly = wy - by;
-    const grad = mctx.createRadialGradient(lx, ly, r * innerFrac, lx, ly, r);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    mctx.fillStyle = grad;
-    mctx.beginPath();
-    mctx.arc(lx, ly, r, 0, Math.PI * 2);
-    mctx.fill();
+    if (shape === 'circle') {
+      const grad = mctx.createRadialGradient(lx, ly, r * innerFrac, lx, ly, r);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      mctx.fillStyle = grad;
+      mctx.beginPath();
+      mctx.arc(lx, ly, r, 0, Math.PI * 2);
+      mctx.fill();
+    } else {
+      mctx.save();
+      mctx.fillStyle = '#ffffff';
+      if (stroke.softness > 0.05) {
+        mctx.shadowColor = '#ffffff';
+        mctx.shadowBlur = r * stroke.softness * 0.55;
+        traceBrushShape(mctx, lx, ly, r * innerFrac, shape, angleDeg, rectRatio);
+      } else {
+        traceBrushShape(mctx, lx, ly, r, shape, angleDeg, rectRatio);
+      }
+      mctx.fill();
+      mctx.restore();
+    }
   };
 
   mctx.globalCompositeOperation = 'source-over';
@@ -236,7 +304,15 @@ function drawWater(
       const col = s.erase ? '#000' : colorFn(s);
       wctx.fillStyle = col;
       wctx.strokeStyle = col;
-      drawStrokeShape(wctx, s.points, rPx, ppg);
+      drawStrokeShape(
+        wctx,
+        s.points,
+        rPx,
+        ppg,
+        s.shape ?? 'circle',
+        s.shapeAngle ?? 0,
+        s.rectRatio ?? 2.0
+      );
       wctx.restore();
     }
     ctx.drawImage(wc, 0, 0);
@@ -253,16 +329,50 @@ function drawStrokeShape(
   ctx: CanvasRenderingContext2D,
   points: Point[],
   radiusPx: number,
-  ppg: number
+  ppg: number,
+  shape: BrushShape = 'circle',
+  angleDeg = 0,
+  rectRatio = 2.0
 ) {
+  if (shape === 'circle') {
+    if (points.length === 1) {
+      ctx.beginPath();
+      ctx.arc(points[0].x * ppg, points[0].y * ppg, radiusPx, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.lineWidth = radiusPx * 2;
+      tracePolyline(ctx, points, ppg, true, false);
+      ctx.stroke();
+    }
+    return;
+  }
+
+  const step = Math.max(2, radiusPx * 0.25);
   if (points.length === 1) {
-    ctx.beginPath();
-    ctx.arc(points[0].x * ppg, points[0].y * ppg, radiusPx, 0, Math.PI * 2);
+    traceBrushShape(ctx, points[0].x * ppg, points[0].y * ppg, radiusPx, shape, angleDeg, rectRatio);
     ctx.fill();
   } else {
-    ctx.lineWidth = radiusPx * 2;
-    tracePolyline(ctx, points, ppg, true, false);
-    ctx.stroke();
+    for (let i = 0; i < points.length - 1; i++) {
+      const ax = points[i].x * ppg;
+      const ay = points[i].y * ppg;
+      const cx = points[i + 1].x * ppg;
+      const cy = points[i + 1].y * ppg;
+      const dist = Math.hypot(cx - ax, cy - ay);
+      const steps = Math.max(1, Math.ceil(dist / step));
+      for (let s = 0; s <= steps; s++) {
+        const t = s / steps;
+        traceBrushShape(
+          ctx,
+          ax + (cx - ax) * t,
+          ay + (cy - ay) * t,
+          radiusPx,
+          shape,
+          angleDeg,
+          rectRatio
+        );
+        ctx.fill();
+      }
+    }
   }
 }
 
