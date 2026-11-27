@@ -63,9 +63,15 @@ let terrainCacheState: {
   ppg: number;
   terrainBase: string;
   terrainStrokes: MapLevel['terrainStrokes'];
-  waterStrokes: MapLevel['waterStrokes'];
   showTerrain: boolean;
-  showWater: boolean;
+} | null = null;
+let waterCacheCanvas: HTMLCanvasElement | null = null;
+let waterCacheState: {
+  levelId: string;
+  width: number;
+  height: number;
+  ppg: number;
+  strokes: MapLevel['waterStrokes'];
 } | null = null;
 
 function getOffscreen(
@@ -319,13 +325,33 @@ function drawWater(
   waterCanvas = wc;
   const wctx = wc.getContext('2d')!;
 
+  // Only the rectangle that holds water is cleared and composited.
+  let left = mapW;
+  let top = mapH;
+  let right = 0;
+  let bottom = 0;
+  for (const s of allStrokes) {
+    const pad = (s.radius * 1.5 + 0.3) * ppg;
+    for (const p of s.points) {
+      left = Math.min(left, p.x * ppg - pad);
+      top = Math.min(top, p.y * ppg - pad);
+      right = Math.max(right, p.x * ppg + pad);
+      bottom = Math.max(bottom, p.y * ppg + pad);
+    }
+  }
+  const bx = Math.max(0, Math.floor(left));
+  const by = Math.max(0, Math.floor(top));
+  const bw = Math.min(mapW, Math.ceil(right)) - bx;
+  const bh = Math.min(mapH, Math.ceil(bottom)) - by;
+  if (bw <= 0 || bh <= 0) return;
+
   const renderWaterPass = (
     radiusFn: (rPx: number) => number,
     colorFn: (s: WaterStroke) => string,
     removes: (s: WaterStroke) => boolean = (s) => Boolean(s.erase),
     alpha = 1
   ) => {
-    wctx.clearRect(0, 0, mapW, mapH);
+    wctx.clearRect(bx, by, bw, bh);
     for (const s of allStrokes) {
       if (s.points.length === 0) continue;
       const rPx = Math.max(2, radiusFn(s.radius * ppg));
@@ -351,7 +377,7 @@ function drawWater(
     // Translucency is applied once to the whole pass, so overlapping strokes never stack it.
     ctx.save();
     ctx.globalAlpha *= alpha;
-    ctx.drawImage(wc, 0, 0);
+    ctx.drawImage(wc, bx, by, bw, bh, bx, by, bw, bh);
     ctx.restore();
   };
 
@@ -364,7 +390,8 @@ function drawWater(
     (s) => s.deepColor,
     (s) => Boolean(s.erase) || s.deep === false
   );
-  drawRipples(ctx, wc, allStrokes, ppg);
+  // Reflections wait until the brush is lifted.
+  if (!previewStroke) drawRipples(ctx, wc, allStrokes, ppg, [bx, by, bw, bh]);
 }
 
 // Light caustics laid only where there is water.
@@ -372,10 +399,11 @@ function drawRipples(
   ctx: CanvasRenderingContext2D,
   wc: HTMLCanvasElement,
   strokes: WaterStroke[],
-  ppg: number
+  ppg: number,
+  [x, y, w, h]: [number, number, number, number]
 ) {
   const wctx = wc.getContext('2d')!;
-  wctx.clearRect(0, 0, wc.width, wc.height);
+  wctx.clearRect(x, y, w, h);
   for (const s of strokes) {
     if (s.points.length === 0) continue;
     wctx.save();
@@ -391,9 +419,9 @@ function drawRipples(
   wctx.save();
   wctx.globalCompositeOperation = 'source-in';
   wctx.fillStyle = ripples;
-  wctx.fillRect(0, 0, wc.width, wc.height);
+  wctx.fillRect(x, y, w, h);
   wctx.restore();
-  ctx.drawImage(wc, 0, 0);
+  ctx.drawImage(wc, x, y, w, h, x, y, w, h);
 }
 
 function drawStrokeShape(
@@ -418,7 +446,7 @@ function drawStrokeShape(
     return;
   }
 
-  const step = Math.max(2, radiusPx * 0.25);
+  const step = Math.max(2, radiusPx * 0.4);
   if (points.length === 1) {
     traceBrushShape(ctx, points[0].x * ppg, points[0].y * ppg, radiusPx, shape, angleDeg, rectRatio);
     ctx.fill();
@@ -1378,17 +1406,21 @@ export function renderMapScene(
   ctx.rect(0, 0, mapW, mapH);
   ctx.clip();
 
-  // 1 & 2. Cached Terrain + Water layer (blits in <1ms when not actively painting).
-  // With a size cap the bitmap stops growing with the zoom, so it is rebuilt far less often.
+  // 1 & 2. Terrain and water, each in its own cached bitmap (a size cap keeps them from
+  // growing with the zoom). Painting water therefore never redraws the terrain.
   const limit = options.maxLayerSize;
-  const layerPpg = limit ? Math.min(ppg, limit / Math.max(doc.width, doc.height)) : ppg;
+  const longest = Math.max(doc.width, doc.height);
+  const layerPpg = limit ? Math.min(ppg, limit / longest) : ppg;
   const cacheW = Math.max(1, Math.round(doc.width * layerPpg));
   const cacheH = Math.max(1, Math.round(doc.height * layerPpg));
   const waterPreview = options.previewWaterStroke ?? null;
+  const cached = Boolean(limit) || (cacheW <= 4096 && cacheH <= 4096);
 
-  if (limit || (!waterPreview && cacheW <= 4096 && cacheH <= 4096)) {
-    const cacheValid =
-      !waterPreview &&
+  if (!doc.layers.terrain) {
+    ctx.fillStyle = '#1d2027';
+    ctx.fillRect(0, 0, mapW, mapH);
+  } else if (cached) {
+    const valid =
       terrainCacheCanvas &&
       terrainCacheState &&
       terrainCacheState.levelId === level.id &&
@@ -1397,62 +1429,64 @@ export function renderMapScene(
       Math.abs(terrainCacheState.ppg - layerPpg) < 0.001 &&
       terrainCacheState.terrainBase === level.terrainBase &&
       terrainCacheState.terrainStrokes === level.terrainStrokes &&
-      terrainCacheState.waterStrokes === level.waterStrokes &&
-      terrainCacheState.showTerrain === doc.layers.terrain &&
-      terrainCacheState.showWater === doc.layers.water;
-
-    if (!cacheValid) {
+      terrainCacheState.showTerrain === doc.layers.terrain;
+    if (!valid) {
       const tc = getOffscreen(terrainCacheCanvas, cacheW, cacheH);
       terrainCacheCanvas = tc;
       const tctx = tc.getContext('2d')!;
       tctx.clearRect(0, 0, cacheW, cacheH);
-      if (doc.layers.terrain) {
-        drawTerrain(tctx, doc, level, layerPpg, null);
-      } else {
-        tctx.fillStyle = '#1d2027';
-        tctx.fillRect(0, 0, cacheW, cacheH);
-      }
-      if (doc.layers.water) {
-        drawWater(tctx, doc, level, layerPpg, waterPreview);
-      }
-      // A bitmap holding a half-painted stroke is never reused.
-      terrainCacheState = waterPreview
-        ? null
-        : {
-            levelId: level.id,
-            width: doc.width,
-            height: doc.height,
-            ppg: layerPpg,
-            terrainBase: level.terrainBase,
-            terrainStrokes: level.terrainStrokes,
-            waterStrokes: level.waterStrokes,
-            showTerrain: doc.layers.terrain,
-            showWater: doc.layers.water,
-          };
+      drawTerrain(tctx, doc, level, layerPpg, null);
+      terrainCacheState = {
+        levelId: level.id,
+        width: doc.width,
+        height: doc.height,
+        ppg: layerPpg,
+        terrainBase: level.terrainBase,
+        terrainStrokes: level.terrainStrokes,
+        showTerrain: doc.layers.terrain,
+      };
     }
-
-    if (terrainCacheCanvas) {
-      ctx.drawImage(terrainCacheCanvas, 0, 0, mapW, mapH);
-    }
-    if (options.previewTerrainStroke && doc.layers.terrain) {
-      drawTerrainStrokeFeathered(
-        ctx,
-        options.previewTerrainStroke,
-        mapW,
-        mapH,
-        ppg,
-        ppg / 128
-      );
+    ctx.drawImage(terrainCacheCanvas!, 0, 0, mapW, mapH);
+    if (options.previewTerrainStroke) {
+      drawTerrainStrokeFeathered(ctx, options.previewTerrainStroke, mapW, mapH, ppg, ppg / 128);
     }
   } else {
-    if (doc.layers.terrain) {
-      drawTerrain(ctx, doc, level, ppg, options.previewTerrainStroke);
-    } else {
-      ctx.fillStyle = '#1d2027';
-      ctx.fillRect(0, 0, mapW, mapH);
-    }
-    if (doc.layers.water) {
+    drawTerrain(ctx, doc, level, ppg, options.previewTerrainStroke);
+  }
+
+  if (doc.layers.water && (level.waterStrokes.length > 0 || waterPreview)) {
+    if (!limit) {
       drawWater(ctx, doc, level, ppg, waterPreview);
+    } else {
+      // Water is soft, so it needs fewer pixels, and fewer still while the brush is moving.
+      const waterPpg = Math.min(ppg, (limit * (waterPreview ? 0.375 : 0.625)) / longest);
+      const valid =
+        !waterPreview &&
+        waterCacheState &&
+        waterCacheState.levelId === level.id &&
+        waterCacheState.width === doc.width &&
+        waterCacheState.height === doc.height &&
+        Math.abs(waterCacheState.ppg - waterPpg) < 0.001 &&
+        waterCacheState.strokes === level.waterStrokes;
+      if (!valid) {
+        const w = Math.max(1, Math.round(doc.width * waterPpg));
+        const h = Math.max(1, Math.round(doc.height * waterPpg));
+        waterCacheCanvas = getOffscreen(waterCacheCanvas, w, h);
+        const wctx = waterCacheCanvas.getContext('2d')!;
+        wctx.clearRect(0, 0, w, h);
+        drawWater(wctx, doc, level, waterPpg, waterPreview);
+        // A bitmap holding a half-painted stroke is never reused.
+        waterCacheState = waterPreview
+          ? null
+          : {
+              levelId: level.id,
+              width: doc.width,
+              height: doc.height,
+              ppg: waterPpg,
+              strokes: level.waterStrokes,
+            };
+      }
+      ctx.drawImage(waterCacheCanvas!, 0, 0, mapW, mapH);
     }
   }
 
