@@ -892,6 +892,49 @@ function drawPortals(
   }
 }
 
+const structureThumbs = new Map<string, string>();
+
+function thumbnail(key: string, draw: (ctx: CanvasRenderingContext2D, size: number) => void) {
+  let url = structureThumbs.get(key);
+  if (!url) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 80;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = getTexturePattern(ctx, 'floor', 'wood_planks', 0.5) ?? '#826040';
+    ctx.fillRect(0, 0, 80, 80);
+    draw(ctx, 80);
+    url = canvas.toDataURL('image/png');
+    structureThumbs.set(key, url);
+  }
+  return url;
+}
+
+// Previews drawn with the same code as the map, so they match what gets placed.
+export function getWallThumbnail(style: WallPolyline['style']): string {
+  return thumbnail(`wall:${style}`, (ctx, size) => {
+    const points = [{ x: -0.5, y: 0.5 }, { x: 1.5, y: 0.5 }];
+    drawWallStroke(ctx, points, false, style, 0.42, size, true);
+  });
+}
+
+export function getPortalThumbnail(kind: PortalItem['kind']): string {
+  return thumbnail(`portal:${kind}`, (ctx, size) => {
+    // A stretch of wall with the door or window set into it, zoomed in on the opening.
+    drawWallStroke(ctx, [{ x: -0.5, y: 0.5 }, { x: 0.08, y: 0.5 }], false, 'stone_hewn', 0.26, size, false);
+    drawWallStroke(ctx, [{ x: 0.92, y: 0.5 }, { x: 1.5, y: 0.5 }], false, 'stone_hewn', 0.26, size, false);
+    ctx.save();
+    ctx.translate(size / 2, size / 2);
+    ctx.scale(1.6, 1.6);
+    ctx.translate(-size / 4, -size / 4);
+    drawPortals(
+      ctx,
+      [{ id: 'thumb', x: 0.5, y: 0.5, angle: 0, width: 0.9, kind, open: false, blocksLight: true }],
+      size / 2
+    );
+    ctx.restore();
+  });
+}
+
 function drawObjectsLayer(
   ctx: CanvasRenderingContext2D,
   objects: MapObject[],

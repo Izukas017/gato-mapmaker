@@ -14,7 +14,11 @@ import {
   getPropThumbnail,
   PROP_CATEGORIES,
 } from '../engine/props';
-import { getPathThumbnail } from '../engine/renderer';
+import {
+  getPathThumbnail,
+  getPortalThumbnail,
+  getWallThumbnail,
+} from '../engine/renderer';
 import {
   FLOOR_PATTERNS,
   getTextureThumbnail,
@@ -544,20 +548,28 @@ export function ToolDrawer() {
 
             <div>
               <div className="section-label">Muros Perimetrales</div>
-              <div className="chip-row">
+              <div className="swatch-grid">
                 <button
-                  className={`chip ${ts.buildingWallStyle === null ? 'active' : ''}`}
+                  className={`swatch-card ${ts.buildingWallStyle === null ? 'active' : ''}`}
                   onClick={() => updateTs({ buildingWallStyle: null })}
                 >
-                  Sin Muro
+                  <span
+                    className="swatch-preview large"
+                    style={{ backgroundImage: `url(${getTextureThumbnail('floor', 'wood_planks')})` }}
+                  />
+                  <span>Sin Muro</span>
                 </button>
                 {WALL_STYLES.map((w) => (
                   <button
                     key={w.id}
-                    className={`chip ${ts.buildingWallStyle === w.id ? 'active' : ''}`}
+                    className={`swatch-card ${ts.buildingWallStyle === w.id ? 'active' : ''}`}
                     onClick={() => updateTs({ buildingWallStyle: w.id })}
                   >
-                    {w.name}
+                    <span
+                      className="swatch-preview large"
+                      style={{ backgroundImage: `url(${getWallThumbnail(w.id)})` }}
+                    />
+                    <span>{w.name}</span>
                   </button>
                 ))}
               </div>
@@ -589,7 +601,10 @@ export function ToolDrawer() {
                     className={`swatch-card ${ts.wallStyle === w.id ? 'active' : ''}`}
                     onClick={() => updateTs({ wallStyle: w.id })}
                   >
-                    <span className="swatch-preview" style={{ background: w.baseColor }} />
+                    <span
+                      className="swatch-preview large"
+                      style={{ backgroundImage: `url(${getWallThumbnail(w.id)})` }}
+                    />
                     <span>{w.name}</span>
                   </button>
                 ))}
@@ -628,6 +643,10 @@ export function ToolDrawer() {
                     className={`swatch-card ${ts.portalKind === p.id ? 'active' : ''}`}
                     onClick={() => updateTs({ portalKind: p.id })}
                   >
+                    <span
+                      className="swatch-preview large"
+                      style={{ backgroundImage: `url(${getPortalThumbnail(p.id)})` }}
+                    />
                     <span>{p.label}</span>
                   </button>
                 ))}
