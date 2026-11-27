@@ -319,6 +319,101 @@ function generateTerrainTexture(id: TerrainMaterialId): HTMLCanvasElement {
   return canvas;
 }
 
+// Seamless value noise: the lattice wraps, so `cells` always tiles across `size`.
+function tileNoise(rand: () => number, size: number, cells: number): (x: number, y: number) => number {
+  const grid = Array.from({ length: cells * cells }, () => rand());
+  const at = (i: number, j: number) =>
+    grid[(((j % cells) + cells) % cells) * cells + (((i % cells) + cells) % cells)];
+  return (x, y) => {
+    const gx = (x / size) * cells;
+    const gy = (y / size) * cells;
+    const i = Math.floor(gx);
+    const j = Math.floor(gy);
+    const u = (gx - i) * (gx - i) * (3 - 2 * (gx - i));
+    const v = (gy - j) * (gy - j) * (3 - 2 * (gy - j));
+    const top = at(i, j) + (at(i + 1, j) - at(i, j)) * u;
+    const bottom = at(i, j + 1) + (at(i + 1, j + 1) - at(i, j + 1)) * u;
+    return top + (bottom - top) * v;
+  };
+}
+
+// Irregular rounded cobbles: wrapped Voronoi cells with mortar gaps and a top-left bevel.
+function drawCobblestones(ctx: CanvasRenderingContext2D, size: number, rand: () => number) {
+  const cells = 5;
+  const step = size / cells;
+  const palette = [
+    [128, 120, 108],
+    [112, 108, 102],
+    [138, 126, 108],
+    [104, 100, 96],
+    [122, 112, 100],
+  ];
+  const stones = Array.from({ length: cells * cells }, (_, k) => ({
+    x: ((k % cells) + 0.5 + (rand() - 0.5) * 0.75 + (Math.floor(k / cells) % 2) * 0.5) * step,
+    y: (Math.floor(k / cells) + 0.5 + (rand() - 0.5) * 0.65) * step,
+    color: palette[Math.floor(rand() * palette.length)],
+    tone: (rand() - 0.5) * 16,
+  }));
+  const warpX = tileNoise(rand, size, 10);
+  const warpY = tileNoise(rand, size, 10);
+  const blotch = tileNoise(rand, size, 16);
+  const grain = tileNoise(rand, size, 96);
+  const wrap = (d: number) => d - Math.round(d / size) * size;
+
+  const image = ctx.createImageData(size, size);
+  const near = stones.map(() => ({ dx: 0, dy: 0, d: 0, i: 0 }));
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      const x = px + (warpX(px, py) - 0.5) * 9;
+      const y = py + (warpY(px, py) - 0.5) * 9;
+      let best = 0;
+      for (let i = 0; i < stones.length; i++) {
+        const n = near[i];
+        n.dx = wrap(stones[i].x - x);
+        n.dy = wrap(stones[i].y - y);
+        n.d = n.dx * n.dx + n.dy * n.dy;
+        n.i = i;
+        if (n.d < near[best].d) best = i;
+      }
+      const a = near[best];
+      // Soft minimum of the distances to every cell border rounds off the corners.
+      let sum = 0;
+      let nx = 0;
+      let ny = 0;
+      for (const n of near) {
+        if (n === a) continue;
+        const ex = n.dx - a.dx;
+        const ey = n.dy - a.dy;
+        const len = Math.hypot(ex, ey);
+        if (len === 0 || len > step * 2.6) continue;
+        const weight = Math.exp(-(n.d - a.d) / (2 * len) / 3.5);
+        sum += weight;
+        nx += (ex / len) * weight;
+        ny += (ey / len) * weight;
+      }
+      const edge = -3.5 * Math.log(sum);
+      const noise = (blotch(px, py) - 0.5) * 22 + (grain(px, py) - 0.5) * 20;
+      const stone = stones[a.i];
+
+      // Mortar: dark, grainy earth between the stones.
+      const mortar = [52 + noise * 0.5, 45 + noise * 0.45, 37 + noise * 0.4];
+      const bevel = Math.max(0, 1 - (edge - 2) / 9);
+      const facing = -(nx + ny) / (Math.hypot(nx, ny) * Math.SQRT2 || 1);
+      const light = stone.tone + noise + bevel * (facing * 38 - 14);
+      const cover = Math.max(0, Math.min(1, edge - 1.6));
+      const outline = 0.55 + 0.45 * Math.max(0, Math.min(1, (edge - 2.4) / 2));
+
+      const o = (py * size + px) * 4;
+      for (let c = 0; c < 3; c++) {
+        const lit = (stone.color[c] + light) * outline;
+        image.data[o + c] = mortar[c] + (lit - mortar[c]) * cover;
+      }
+      image.data[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+}
+
 function generateFloorTexture(id: FloorPatternId): HTMLCanvasElement {
   const size = 256;
   const [canvas, ctx] = makeCanvas(size, size);
@@ -452,26 +547,7 @@ function generateFloorTexture(id: FloorPatternId): HTMLCanvasElement {
     }
     addOrganicNoise(ctx, size, 913, 80, 5, 18, ['#2d333b', '#6d7785'], 0.14);
   } else if (id === 'rough_cobble') {
-    ctx.fillStyle = '#2f2d2a';
-    ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 64; i++) {
-      const x = rand() * size;
-      const y = rand() * size;
-      const rx = 10 + rand() * 14;
-      const ry = 8 + rand() * 12;
-      const v = 76 + Math.floor(rand() * 30);
-      ctx.fillStyle = `rgb(${v + 4},${v},${v - 4})`;
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-          ctx.beginPath();
-          ctx.ellipse(x + dx * size, y + dy * size, rx, ry, rand() * Math.PI, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(18,16,14,0.6)';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-        }
-      }
-    }
+    drawCobblestones(ctx, size, rand);
   } else if (id === 'marble_check' || id === 'checkered_black_white') {
     const isBW = id === 'checkered_black_white';
     const step = 64;
