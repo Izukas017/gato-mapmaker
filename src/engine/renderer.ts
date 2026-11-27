@@ -490,6 +490,55 @@ function drawPaths(
       ctx.lineWidth = w * 0.6;
       tracePolyline(ctx, path.points, ppg, path.smooth);
       ctx.stroke();
+    } else if (path.style === 'rail_tracks') {
+      ctx.strokeStyle = '#5c3c20';
+      ctx.lineWidth = w;
+      ctx.setLineDash([4, 8]);
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = Math.max(2, w * 0.25);
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+    } else if (path.style === 'rope_bridge') {
+      ctx.strokeStyle = '#7c532f';
+      ctx.lineWidth = w;
+      ctx.setLineDash([8, 3]);
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (path.style === 'stream_brook') {
+      ctx.strokeStyle = '#1e5b70';
+      ctx.lineWidth = w * 1.15;
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+      ctx.strokeStyle = '#45a8c4';
+      ctx.lineWidth = w * 0.78;
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+    } else if (path.style === 'lava_stream') {
+      ctx.strokeStyle = '#4a180d';
+      ctx.lineWidth = w * 1.25;
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = w * 0.85;
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = w * 0.35;
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+    } else if (path.style === 'stone_wall_low') {
+      ctx.strokeStyle = '#292724';
+      ctx.lineWidth = w + 3;
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
+      ctx.strokeStyle = '#7d776e';
+      ctx.lineWidth = w;
+      tracePolyline(ctx, path.points, ppg, path.smooth);
+      ctx.stroke();
     } else {
       // cliff_edge
       ctx.strokeStyle = '#2d2925';
@@ -600,8 +649,13 @@ function drawPortals(
       ctx.strokeRect(-w / 2 - 3, -h * 0.7, 8, h * 1.4);
       ctx.fillRect(w / 2 - 5, -h * 0.7, 8, h * 1.4);
       ctx.strokeRect(w / 2 - 5, -h * 0.7, 8, h * 1.4);
-    } else if (p.kind === 'window_glass' || p.kind === 'window_stained') {
-      ctx.fillStyle = p.kind === 'window_stained' ? '#4fb3b8' : '#7ac2d6';
+    } else if (p.kind === 'window_glass' || p.kind === 'window_stained' || p.kind === 'window_bars') {
+      ctx.fillStyle =
+        p.kind === 'window_stained'
+          ? '#4fb3b8'
+          : p.kind === 'window_bars'
+            ? '#333840'
+            : '#7ac2d6';
       ctx.strokeStyle = '#2b2218';
       ctx.lineWidth = 2.5;
       ctx.fillRect(-w / 2, -h * 0.42, w, h * 0.84);
@@ -615,9 +669,26 @@ function drawPortals(
       ctx.moveTo(-w / 2, 0);
       ctx.lineTo(w / 2, 0);
       ctx.stroke();
+    } else if (p.kind === 'portcullis') {
+      ctx.strokeStyle = '#4a5059';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(-w / 2, -h * 0.35, w, h * 0.7);
+      for (let x = -w / 2 + 6; x < w / 2; x += 8) {
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.arc(x, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else {
       // Doors
-      const color = p.kind === 'door_iron' ? '#4a5059' : '#784c28';
+      const color =
+        p.kind === 'door_iron'
+          ? '#4a5059'
+          : p.kind === 'door_secret'
+            ? '#787166'
+            : p.kind === 'door_ornate_gold'
+              ? '#b89342'
+              : '#784c28';
       const trim = p.kind === 'door_iron' ? '#22262b' : '#2e1b0d';
       // Jambs
       ctx.fillStyle = '#574636';

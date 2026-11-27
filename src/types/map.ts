@@ -23,7 +23,15 @@ export type TerrainMaterialId =
   | 'moss'
   | 'sand'
   | 'mud'
-  | 'snow';
+  | 'snow'
+  | 'gravel'
+  | 'volcanic'
+  | 'lava_crust'
+  | 'ice'
+  | 'swamp'
+  | 'desert_cracked'
+  | 'autumn_leaves'
+  | 'arcane_ground';
 
 export type BrushShape =
   | 'circle'
@@ -41,14 +49,31 @@ export type FloorPatternId =
   | 'rough_cobble'
   | 'marble_check'
   | 'dark_wood'
-  | 'carpet_crimson';
+  | 'carpet_crimson'
+  | 'marble_white_gold'
+  | 'dungeon_cracked'
+  | 'brick_herringbone'
+  | 'bamboo_tatami'
+  | 'obsidian_hex'
+  | 'sandstone_tile'
+  | 'copper_plate'
+  | 'castle_flagstone'
+  | 'checkered_black_white'
+  | 'carpet_royal_blue';
 
 export type WallStyleId =
   | 'stone_hewn'
   | 'timber_frame'
   | 'rough_masonry'
   | 'brick_aged'
-  | 'temple_gold';
+  | 'temple_gold'
+  | 'obsidian_black'
+  | 'marble_white'
+  | 'sandstone_wall'
+  | 'cave_rock'
+  | 'iron_fortress'
+  | 'hedge_wall'
+  | 'palisade_wood';
 
 export type PortalKind =
   | 'door_wood'
@@ -56,7 +81,11 @@ export type PortalKind =
   | 'door_iron'
   | 'archway'
   | 'window_glass'
-  | 'window_stained';
+  | 'window_stained'
+  | 'portcullis'
+  | 'door_secret'
+  | 'door_ornate_gold'
+  | 'window_bars';
 
 export type PathStyleId =
   | 'dirt_road'
@@ -65,13 +94,22 @@ export type PathStyleId =
   | 'carpet_teal'
   | 'carpet_crimson'
   | 'hedge'
-  | 'cliff_edge';
+  | 'cliff_edge'
+  | 'rail_tracks'
+  | 'rope_bridge'
+  | 'stream_brook'
+  | 'lava_stream'
+  | 'stone_wall_low';
 
 export type RoofStyleId =
   | 'slate_blue'
   | 'terracotta'
   | 'thatch'
-  | 'dark_shingle';
+  | 'dark_shingle'
+  | 'copper_verdigris'
+  | 'crimson_tile'
+  | 'wood_planks_roof'
+  | 'gold_dome';
 
 export type PropLayer = 'below_floor' | 'above_floor' | 'above_walls' | 'roof';
 
@@ -259,11 +297,15 @@ export interface SelectionRef {
 
 export type PropCategory =
   | 'furniture'
+  | 'tavern'
+  | 'rugs'
   | 'temple'
+  | 'dungeon'
+  | 'magic'
   | 'storage'
+  | 'camp'
   | 'nature'
   | 'lighting'
-  | 'rugs'
   | 'custom';
 
 export interface PropDefinition {

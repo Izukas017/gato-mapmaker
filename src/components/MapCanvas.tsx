@@ -666,7 +666,9 @@ export function MapCanvas() {
       const blocksLight =
         toolSettings.portalKind === 'door_wood' ||
         toolSettings.portalKind === 'door_double' ||
-        toolSettings.portalKind === 'door_iron';
+        toolSettings.portalKind === 'door_iron' ||
+        toolSettings.portalKind === 'door_ornate_gold' ||
+        toolSettings.portalKind === 'door_secret';
       store.addPortal({
         id: uid('p'),
         x: pos.x,
