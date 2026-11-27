@@ -1,4 +1,4 @@
-# Gato MapMaker (`v0.7.2`)
+# Gato MapMaker (`v0.7.3`)
 
 Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) inspirado en el flujo de trabajo de **Dungeondraft**, ejecutándose directamente en el navegador con guardado automático local e iluminación dinámica con sombras en tiempo real.
 
@@ -44,7 +44,7 @@ Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) ins
 
 - **Fusionar y Separar:** con 2 o más elementos seleccionados, une las salas, tejados, muros y caminos que se tocan, iguala las propiedades compartidas y agrupa el resto.
 - **Caminos:** los del mismo estilo se unen al cruzarse. Con *Curva Suavizada* activada se ajusta la **curvatura**; desactivada, se curva cada tramo arrastrando sus puntos.
-- **Luz automática:** antorchas, braseros, hogueras, hornos, cristales y otros objetos luminosos ya emiten luz al colocarlos (20 objetos).
+- **Luz automática:** antorchas, braseros, hogueras, hornos, calderos, cristales y otros objetos luminosos ya emiten luz al colocarlos (21 objetos).
 
 ### Biblioteca de objetos
 
@@ -64,7 +64,7 @@ Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) ins
 - **Guardado automático:** al abrir la página se carga el último mapa que estabas editando.
 - **Plantillas incluidas:** *Santuario del Patio* y *Barrio Empedrado*, desde **Plantillas** en la barra superior.
 - **App instalable (PWA)** con controles táctiles.
-- **Rendimiento:** el mapa se guarda como imagen mientras te mueves, para que el zoom y el desplazamiento vayan ligeros en equipos modestos.
+- **Rendimiento:** el mapa, los muros y los mapas de luz se almacenan en caché para que el zoom y el desplazamiento vayan fluidos en PC y móvil (con precalentamiento ligero en dispositivos con poca memoria).
 - **Exportación:** **PNG** o **WebP** (70 / 100 / 140 px por casilla), **Universal VTT (`.dd2vtt`)** con muros, puertas y luces para Foundry VTT / Roll20, o proyecto editable `.ddraft.json`.
 
 ---
