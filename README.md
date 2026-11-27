@@ -47,8 +47,8 @@ Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) ins
 | `Ctrl + D` | Duplicar objeto o luz seleccionada |
 | `Supr` / `Retroceso` | Eliminar elemento seleccionado |
 | `Shift + Rueda` | Rotar el objeto antes de colocarlo |
-| `Espacio + Arrastrar` / `Clic derecho` | Desplazar la vista (pan) |
-| `Rueda del ratón` | Zoom centrado en el cursor |
+| `Espacio + Arrastrar` / `Clic derecho` / `Rueda` | Desplazar la vista (pan) |
+| `Ctrl + Rueda del ratón` | Zoom centrado en el cursor |
 
 ---
 

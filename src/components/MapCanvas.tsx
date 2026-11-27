@@ -958,44 +958,78 @@ export function MapCanvas() {
     }
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    // Shift + wheel rotates active prop or brush shape
-    if (e.shiftKey) {
-      const step = e.deltaY > 0 ? 15 : -15;
-      if (activeTool === 'object') {
-        updateToolSettings({
-          propRotationDeg: (toolSettings.propRotationDeg + step + 360) % 360,
-        });
-        return;
-      }
-      if (activeTool === 'terrain' && toolSettings.terrainBrushShape !== 'circle') {
-        updateToolSettings({
-          terrainBrushAngle: (toolSettings.terrainBrushAngle + step + 360) % 360,
-        });
-        return;
-      }
-      if (activeTool === 'water' && toolSettings.waterBrushShape !== 'circle') {
-        updateToolSettings({
-          waterBrushAngle: (toolSettings.waterBrushAngle + step + 360) % 360,
-        });
-        return;
-      }
-    }
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      e.preventDefault();
 
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+      // Ctrl + Wheel: zoom the map centered on the cursor
+      if (e.ctrlKey || e.metaKey) {
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
 
-    const stepIn = zoomSpeed === 'slow' ? 1.06 : zoomSpeed === 'fast' ? 1.22 : 1.12;
-    const factor = e.deltaY < 0 ? stepIn : 1 / stepIn;
-    const nextZoom = Math.max(0.2, Math.min(3.5, zoom * factor));
-    const ratio = nextZoom / zoom;
-    const nextPanX = mx - (mx - panX) * ratio;
-    const nextPanY = my - (my - panY) * ratio;
-    setViewport(nextZoom, nextPanX, nextPanY);
-  };
+        const stepIn = zoomSpeed === 'slow' ? 1.06 : zoomSpeed === 'fast' ? 1.22 : 1.12;
+        const factor = e.deltaY < 0 ? stepIn : 1 / stepIn;
+        const nextZoom = Math.max(0.2, Math.min(3.5, zoom * factor));
+        const ratio = nextZoom / zoom;
+        const nextPanX = mx - (mx - panX) * ratio;
+        const nextPanY = my - (my - panY) * ratio;
+        setViewport(nextZoom, nextPanX, nextPanY);
+        return;
+      }
+
+      // Shift + Wheel: rotate active prop/brush, or pan horizontally
+      if (e.shiftKey) {
+        const step = e.deltaY > 0 ? 15 : -15;
+        if (activeTool === 'object') {
+          updateToolSettings({
+            propRotationDeg: (toolSettings.propRotationDeg + step + 360) % 360,
+          });
+          return;
+        }
+        if (activeTool === 'terrain' && toolSettings.terrainBrushShape !== 'circle') {
+          updateToolSettings({
+            terrainBrushAngle: (toolSettings.terrainBrushAngle + step + 360) % 360,
+          });
+          return;
+        }
+        if (activeTool === 'water' && toolSettings.waterBrushShape !== 'circle') {
+          updateToolSettings({
+            waterBrushAngle: (toolSettings.waterBrushAngle + step + 360) % 360,
+          });
+          return;
+        }
+        setViewport(zoom, panX - e.deltaY * 0.65, panY);
+        return;
+      }
+
+      // Plain Wheel: pan vertically (and horizontally on trackpad deltaX)
+      setViewport(zoom, panX - e.deltaX * 0.65, panY - e.deltaY * 0.65);
+    },
+    [
+      activeTool,
+      panX,
+      panY,
+      setViewport,
+      toolSettings.propRotationDeg,
+      toolSettings.terrainBrushAngle,
+      toolSettings.terrainBrushShape,
+      toolSettings.waterBrushAngle,
+      toolSettings.waterBrushShape,
+      updateToolSettings,
+      zoom,
+      zoomSpeed,
+    ]
+  );
+
+  // Attach non-passive wheel listener so Ctrl+Wheel never triggers browser page zoom
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
 
   const toolHint = (() => {
     switch (activeTool) {
@@ -1037,7 +1071,6 @@ export function MapCanvas() {
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onDoubleClick={handleDoubleClick}
-        onWheel={handleWheel}
         onContextMenu={(e) => e.preventDefault()}
       />
       {showCanvasHints && <div className="canvas-hint-pill">{toolHint}</div>}
