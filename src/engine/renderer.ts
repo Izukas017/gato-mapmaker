@@ -1456,30 +1456,29 @@ function drawWalls(
 let wallCacheCanvas: HTMLCanvasElement | null = null;
 let wallCacheKey: unknown[] = [];
 
-// Walls only change when they are edited, so painting or moving things reuses their bitmap.
+// Walls only change when they are edited, so panning or moving things reuses their bitmap.
 function drawCachedWalls(
   ctx: CanvasRenderingContext2D,
   doc: MapDocument,
   level: MapLevel,
-  ppg: number
+  ppg: number,
+  maxSize: number
 ) {
   if (level.walls.length === 0 && !level.rooms.some((r) => r.wallStyle)) return;
-  const t = ctx.getTransform();
-  const { width, height } = ctx.canvas;
-  const key = [level.rooms, level.walls, doc.layers.shadows, ppg, t.a, t.d, t.e, t.f, width, height];
+  const longest = Math.max(doc.width, doc.height);
+  const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+  const wallPpg = Math.min(ppg * dpr, (maxSize * 1.25) / longest);
+  const cw = Math.max(1, Math.round(doc.width * wallPpg));
+  const ch = Math.max(1, Math.round(doc.height * wallPpg));
+  const key = [level.id, doc.width, doc.height, level.rooms, level.walls, doc.layers.shadows, wallPpg];
   if (!wallCacheCanvas || key.some((value, i) => value !== wallCacheKey[i])) {
-    wallCacheCanvas = getOffscreen(wallCacheCanvas, width, height);
+    wallCacheCanvas = getOffscreen(wallCacheCanvas, cw, ch);
     const wctx = wallCacheCanvas.getContext('2d')!;
-    wctx.setTransform(1, 0, 0, 1, 0, 0);
-    wctx.clearRect(0, 0, width, height);
-    wctx.setTransform(t);
-    drawWalls(wctx, doc, level, ppg);
+    wctx.clearRect(0, 0, cw, ch);
+    drawWalls(wctx, doc, level, wallPpg);
     wallCacheKey = key;
   }
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.drawImage(wallCacheCanvas, 0, 0);
-  ctx.restore();
+  ctx.drawImage(wallCacheCanvas, 0, 0, doc.width * ppg, doc.height * ppg);
 }
 
 export function renderMapScene(
@@ -1629,7 +1628,7 @@ export function renderMapScene(
 
   // 7. Walls (from rooms + freeform walls)
   if (doc.layers.walls) {
-    if (limit) drawCachedWalls(ctx, doc, level, ppg);
+    if (limit) drawCachedWalls(ctx, doc, level, ppg, limit);
     else drawWalls(ctx, doc, level, ppg);
   }
 

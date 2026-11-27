@@ -24,6 +24,15 @@ const PORTALS: PortalKind[] = [
  * tool panel on a slow computer does not freeze it.
  */
 export function warmUpAssets() {
+  const isConstrainedDevice =
+    window.innerWidth <= 860 ||
+    ((navigator as { deviceMemory?: number }).deviceMemory ?? 8) <= 4;
+
+  // On mobile/low-RAM devices, skip pre-building 130+ animal thumbnails until opened.
+  const propsToWarm = isConstrainedDevice
+    ? BUILTIN_PROPS.filter((p) => p.category !== 'animals')
+    : BUILTIN_PROPS;
+
   const jobs: (() => void)[] = [
     ...TERRAIN_MATERIALS.map((m) => () => getTextureThumbnail('terrain', m.id)),
     ...FLOOR_PATTERNS.map((m) => () => getTextureThumbnail('floor', m.id)),
@@ -31,7 +40,7 @@ export function warmUpAssets() {
     ...PORTALS.map((id) => () => getPortalThumbnail(id)),
     ...PATHS.map((id) => () => getPathThumbnail(id)),
     ...ROOF_STYLES.map((m) => () => getTextureThumbnail('roof', m.id)),
-    ...BUILTIN_PROPS.map((p) => () => getPropThumbnail(p.id)),
+    ...propsToWarm.map((p) => () => getPropThumbnail(p.id)),
   ];
   const later = (step: (budget: () => number) => void) => {
     if (typeof window.requestIdleCallback === 'function') {

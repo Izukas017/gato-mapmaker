@@ -85,7 +85,7 @@ export function TopBar({
         <div className="brand-mark">
           <div className="brand-badge">G</div>
           <span className="brand-title">Gato MapMaker</span>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>v0.7.2</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>v0.7.3</span>
         </div>
 
         {menuOpen && (

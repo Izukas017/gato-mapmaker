@@ -66,14 +66,16 @@ export function useSceneFrame(redraw: () => void) {
     let render = changed;
     let margin = 0;
     if (frame && !changed) {
+      const at = place(frame);
+      const covered =
+        at.x <= 0.5 && at.y <= 0.5 && at.x + at.w >= width - 0.5 && at.y + at.h >= height - 0.5;
       if (frame.ppg === ppg) {
-        const at = place(frame);
-        const covered =
-          at.x <= 0.5 && at.y <= 0.5 && at.x + at.w >= width - 0.5 && at.y + at.h >= height - 0.5;
         if (!covered) {
           render = true;
           margin = PAN_MARGIN;
         }
+      } else if (!covered || sharpenRef.current?.due) {
+        render = true;
       } else if (sharpenRef.current?.ppg !== ppg) {
         window.clearTimeout(sharpenRef.current?.timer);
         const pending = { ppg, timer: 0, due: false };
@@ -82,8 +84,6 @@ export function useSceneFrame(redraw: () => void) {
           redraw();
         }, SHARPEN_DELAY);
         sharpenRef.current = pending;
-      } else if (sharpenRef.current.due) {
-        render = true;
       }
     }
 

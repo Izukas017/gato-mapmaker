@@ -252,6 +252,7 @@ export const PROP_LIGHTS: Record<string, { color: string; radius: number; intens
   forge_furnace: { color: '#ff6a14', radius: 4.5, intensity: 1 },
   roast_spit: { color: '#ff8c2e', radius: 3.5, intensity: 1 },
   sauna_brazier: { color: '#ff9d2e', radius: 3.5, intensity: 0.8 },
+  cauldron_witch: { color: '#84cc16', radius: 3.2, intensity: 0.85 },
   portal_gate: { color: '#a855f7', radius: 5, intensity: 1 },
   magic_circle: { color: '#5eead4', radius: 4, intensity: 0.8 },
   crystal_cluster: { color: '#38bdf8', radius: 3.5, intensity: 0.8 },
