@@ -1,4 +1,4 @@
-# Gato MapMaker (`v0.2.1`)
+# Gato MapMaker (`v0.2.2`)
 
 Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) inspirado en el flujo de trabajo de **Dungeondraft**, ejecutándose directamente en el navegador con guardado automático local e iluminación dinámica con sombras en tiempo real.
 
