@@ -8,6 +8,10 @@ import {
   WALL_STYLES,
 } from './textures';
 import type { PathStyleId, PortalKind } from '../types/map';
+import { useUiPrefs } from '../store/useUiPrefs';
+import {
+  CYBER_FLOORS, CYBER_PATHS, CYBER_PORTALS, CYBER_ROOFS, CYBER_TERRAIN, CYBER_WALLS, isCyber,
+} from './cyber/catalog';
 
 const PATHS: PathStyleId[] = [
   'dirt_road', 'cobble_path', 'fence_wood', 'fence_picket', 'fence_iron', 'wood_bridge',
@@ -29,11 +33,21 @@ export function warmUpAssets() {
     ((navigator as { deviceMemory?: number }).deviceMemory ?? 8) <= 4;
 
   // On mobile/low-RAM devices, skip pre-building 130+ animal thumbnails until opened.
-  const propsToWarm = isConstrainedDevice
-    ? BUILTIN_PROPS.filter((p) => p.category !== 'animals')
-    : BUILTIN_PROPS;
+  // Only the content of the variant in use; the other one is built when its tab is opened.
+  const cyber = useUiPrefs.getState().appVariant === 'cybergato';
+  const propsToWarm = BUILTIN_PROPS.filter(
+    (p) => isCyber(p.id) === cyber && !(isConstrainedDevice && p.category === 'animals')
+  );
 
-  const jobs: (() => void)[] = [
+  const jobs: (() => void)[] = cyber ? [
+    ...CYBER_TERRAIN.map((m) => () => getTextureThumbnail('terrain', m.id)),
+    ...CYBER_FLOORS.map((m) => () => getTextureThumbnail('floor', m.id)),
+    ...CYBER_WALLS.map((m) => () => getWallThumbnail(m.id)),
+    ...CYBER_PORTALS.map((p) => () => getPortalThumbnail(p.id)),
+    ...CYBER_PATHS.map((p) => () => getPathThumbnail(p.id)),
+    ...CYBER_ROOFS.map((m) => () => getTextureThumbnail('roof', m.id)),
+    ...propsToWarm.map((p) => () => getPropThumbnail(p.id)),
+  ] : [
     ...TERRAIN_MATERIALS.map((m) => () => getTextureThumbnail('terrain', m.id)),
     ...FLOOR_PATTERNS.map((m) => () => getTextureThumbnail('floor', m.id)),
     ...WALL_STYLES.map((m) => () => getWallThumbnail(m.id)),

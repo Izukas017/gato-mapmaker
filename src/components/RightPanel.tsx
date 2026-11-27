@@ -17,6 +17,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { FLOOR_PATTERNS, ROOF_STYLES, WALL_STYLES } from '../engine/textures';
+import { CYBER_FLOORS, CYBER_PATHS, CYBER_PORTALS, CYBER_ROOFS, CYBER_WALLS } from '../engine/cyber/catalog';
+import { StyleOptions } from './VariantContent';
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
 import { NumberSliderRow } from './NumberSliderRow';
@@ -688,11 +690,7 @@ export function RightPanel() {
                       updateSelectedPortal({ kind: e.target.value as PortalKind })
                     }
                   >
-                    {PORTAL_TYPES.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
+                    <StyleOptions classic={PORTAL_TYPES} cyber={CYBER_PORTALS} value={selectedPortal.kind} />
                   </select>
                 </div>
                 <button
@@ -775,11 +773,7 @@ export function RightPanel() {
                       updateSelectedRoom({ floor: e.target.value as FloorPatternId })
                     }
                   >
-                    {FLOOR_PATTERNS.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))}
+                    <StyleOptions classic={FLOOR_PATTERNS} cyber={CYBER_FLOORS} value={selectedRoom.floor} />
                   </select>
                 </div>
                 <NumberSliderRow
@@ -824,11 +818,7 @@ export function RightPanel() {
                     }
                   >
                     <option value="">Sin Muro</option>
-                    {WALL_STYLES.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
+                    <StyleOptions classic={WALL_STYLES} cyber={CYBER_WALLS} value={selectedRoom.wallStyle} />
                   </select>
                 </div>
                 {selectedRoom.wallStyle && (
@@ -866,11 +856,7 @@ export function RightPanel() {
                       updateSelectedWall({ style: e.target.value as WallStyleId })
                     }
                   >
-                    {WALL_STYLES.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
+                    <StyleOptions classic={WALL_STYLES} cyber={CYBER_WALLS} value={selectedWall.style} />
                   </select>
                 </div>
                 <NumberSliderRow
@@ -911,11 +897,7 @@ export function RightPanel() {
                       updateSelectedPath({ style: e.target.value as PathStyleId })
                     }
                   >
-                    {PATH_STYLES.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
+                    <StyleOptions classic={PATH_STYLES} cyber={CYBER_PATHS} value={selectedPath.style} />
                   </select>
                 </div>
                 <NumberSliderRow
@@ -979,11 +961,7 @@ export function RightPanel() {
                       updateSelectedRoof({ style: e.target.value as RoofStyleId })
                     }
                   >
-                    {ROOF_STYLES.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
+                    <StyleOptions classic={ROOF_STYLES} cyber={CYBER_ROOFS} value={selectedRoof.style} />
                   </select>
                 </div>
                 <NumberSliderRow

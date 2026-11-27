@@ -4,24 +4,24 @@ import type { FloorPatternId, RoofStyleId, TerrainMaterialId } from '../types/ma
 export const SURFACE_SIZE = 256;
 const S = SURFACE_SIZE;
 
-type Rand = () => number;
+export type Rand = () => number;
 type Noise = (x: number, y: number) => number;
-type RGB = [number, number, number];
+export type RGB = [number, number, number];
 
-const clamp = (v: number, lo = 0, hi = 1) => (v < lo ? lo : v > hi ? hi : v);
-const rgb = (hex: string): RGB => {
+export const clamp = (v: number, lo = 0, hi = 1) => (v < lo ? lo : v > hi ? hi : v);
+export const rgb = (hex: string): RGB => {
   const n = parseInt(hex.slice(1), 16);
   return [n >> 16, (n >> 8) & 255, n & 255];
 };
-const mix = (a: RGB, b: RGB, t: number): RGB => {
+export const mix = (a: RGB, b: RGB, t: number): RGB => {
   const k = clamp(t);
   return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
 };
-const shade = (c: RGB, d: number): RGB => [c[0] + d, c[1] + d, c[2] + d];
-const pickFrom = <T>(rand: Rand, list: T[]): T => list[Math.floor(rand() * list.length)];
+export const shade = (c: RGB, d: number): RGB => [c[0] + d, c[1] + d, c[2] + d];
+export const pickFrom = <T>(rand: Rand, list: T[]): T => list[Math.floor(rand() * list.length)];
 
 // Colour ramp through evenly spaced stops.
-function ramp(stops: string[]): (t: number) => RGB {
+export function ramp(stops: string[]): (t: number) => RGB {
   const colors = stops.map(rgb);
   return (t) => {
     const at = clamp(t) * (colors.length - 1);
@@ -49,14 +49,14 @@ export function tileNoise(rand: Rand, size: number, cells: number, cellsY = cell
 }
 
 // Several octaves of noise, stretched to use most of 0..1.
-function fbm(rand: Rand, cells: number): Noise {
+export function fbm(rand: Rand, cells: number): Noise {
   const a = tileNoise(rand, S, cells);
   const b = tileNoise(rand, S, cells * 2);
   const c = tileNoise(rand, S, cells * 5);
   return (x, y) => clamp((a(x, y) * 0.57 + b(x, y) * 0.28 + c(x, y) * 0.15 - 0.5) * 1.7 + 0.5);
 }
 
-function pixels(ctx: CanvasRenderingContext2D, color: (x: number, y: number) => RGB) {
+export function pixels(ctx: CanvasRenderingContext2D, color: (x: number, y: number) => RGB) {
   const image = ctx.createImageData(S, S);
   for (let y = 0; y < S; y++) {
     for (let x = 0; x < S; x++) {
@@ -72,7 +72,7 @@ function pixels(ctx: CanvasRenderingContext2D, color: (x: number, y: number) => 
 }
 
 // Calls draw at (x, y) and at every wrapped copy that can reach into the tile.
-function wrapped(x: number, y: number, reach: number, draw: (x: number, y: number) => void) {
+export function wrapped(x: number, y: number, reach: number, draw: (x: number, y: number) => void) {
   for (let dx = -S; dx <= S; dx += S) {
     for (let dy = -S; dy <= S; dy += S) {
       const px = x + dx;
@@ -82,11 +82,11 @@ function wrapped(x: number, y: number, reach: number, draw: (x: number, y: numbe
   }
 }
 
-function scatter(rand: Rand, count: number, reach: number, draw: (x: number, y: number) => void) {
+export function scatter(rand: Rand, count: number, reach: number, draw: (x: number, y: number) => void) {
   for (let i = 0; i < count; i++) wrapped(rand() * S, rand() * S, reach, draw);
 }
 
-function oval(
+export function oval(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -102,7 +102,7 @@ function oval(
 }
 
 // Loose stones with a drop shadow and a lit top.
-function pebbles(
+export function pebbles(
   ctx: CanvasRenderingContext2D,
   rand: Rand,
   count: number,
@@ -124,7 +124,7 @@ function pebbles(
 }
 
 // Jagged lines wandering across the tile.
-function cracks(
+export function cracks(
   ctx: CanvasRenderingContext2D,
   rand: Rand,
   count: number,
@@ -162,7 +162,7 @@ interface Cell {
 }
 
 // Wrapped Voronoi cells on a jittered lattice (jitter 0 with shifted rows gives hexagons).
-function voronoi(
+export function voronoi(
   rand: Rand,
   cols: number,
   rows: number,
@@ -234,7 +234,7 @@ interface StoneStyle {
 }
 
 // Irregular stones set in mortar, each with its own tone, speckle and bevel.
-function stones(ctx: CanvasRenderingContext2D, rand: Rand, style: StoneStyle) {
+export function stones(ctx: CanvasRenderingContext2D, rand: Rand, style: StoneStyle) {
   const cell = voronoi(rand, style.cols, style.rows, style.jitter, style.round, style.warp);
   const tones = Array.from({ length: style.cols * style.rows }, () =>
     shade(rgb(pickFrom(rand, style.colors)), (rand() - 0.5) * 14)
@@ -264,7 +264,7 @@ interface Slab {
 }
 
 // Rows of rectangular slabs; each row lists its slab widths and a horizontal shift.
-function slabRows(rows: { widths: number[]; shift: number }[]): (x: number, y: number) => Slab {
+export function slabRows(rows: { widths: number[]; shift: number }[]): (x: number, y: number) => Slab {
   const h = S / rows.length;
   return (x, y) => {
     const r = Math.floor(y / h) % rows.length;
@@ -288,7 +288,7 @@ function slabRows(rows: { widths: number[]; shift: number }[]): (x: number, y: n
   };
 }
 
-const even = (rows: number, cols: number, shift: number) =>
+export const even = (rows: number, cols: number, shift: number) =>
   slabRows(
     Array.from({ length: rows }, (_, r) => ({
       widths: Array(cols).fill(S / cols),
@@ -296,7 +296,7 @@ const even = (rows: number, cols: number, shift: number) =>
     }))
   );
 
-function slabs(
+export function slabs(
   ctx: CanvasRenderingContext2D,
   rand: Rand,
   layout: (x: number, y: number) => Slab,
@@ -322,7 +322,7 @@ function slabs(
 
 // ---------- Terrain ----------
 
-function earth(
+export function earth(
   ctx: CanvasRenderingContext2D,
   rand: Rand,
   stops: string[],
@@ -341,7 +341,7 @@ function earth(
   });
 }
 
-function blades(
+export function blades(
   ctx: CanvasRenderingContext2D,
   rand: Rand,
   count: number,
@@ -390,7 +390,7 @@ function glowingCracks(
   });
 }
 
-type Painter = (ctx: CanvasRenderingContext2D, rand: Rand) => void;
+export type Painter = (ctx: CanvasRenderingContext2D, rand: Rand) => void;
 
 const TERRAIN: Record<TerrainMaterialId, Painter> = {
   dirt: (ctx, rand) => {
@@ -584,7 +584,7 @@ function woodTone(rand: Rand): (along: number, across: number, tone: number) => 
   };
 }
 
-function planks(ctx: CanvasRenderingContext2D, rand: Rand, color: string) {
+export function planks(ctx: CanvasRenderingContext2D, rand: Rand, color: string) {
   const grain = woodTone(rand);
   const base = rgb(color);
   const joints = Array.from({ length: 8 }, () => ({
@@ -624,7 +624,7 @@ function planks(ctx: CanvasRenderingContext2D, rand: Rand, color: string) {
   });
 }
 
-function herringbone(
+export function herringbone(
   ctx: CanvasRenderingContext2D,
   rand: Rand,
   colors: string[],
@@ -982,7 +982,7 @@ const FLOORS: Record<FloorPatternId, Painter> = {
 type TileShape = 'slate' | 'scale' | 'barrel';
 
 // Overlapping courses of tiles, drawn bottom-up so each row covers the one below.
-function shingles(
+export function shingles(
   ctx: CanvasRenderingContext2D,
   rand: Rand,
   shape: TileShape,
@@ -1051,7 +1051,7 @@ function shingles(
   }
 }
 
-function grime(ctx: CanvasRenderingContext2D, rand: Rand, color: string, count: number) {
+export function grime(ctx: CanvasRenderingContext2D, rand: Rand, color: string, count: number) {
   scatter(rand, count, 5, (x, y) => oval(ctx, x, y, 1 + rand() * 2.4, 0.8 + rand() * 1.8, rand() * 3, color));
 }
 

@@ -5,6 +5,7 @@ import type {
   WallStyleId,
 } from '../types/map';
 import { paintRipples, paintSurface, SURFACE_SIZE, tileNoise } from './surfaces';
+import { CYBER_SURFACES } from './cyber/surfaces';
 
 // Deterministic PRNG for repeatable procedural textures
 function mulberry32(seed: number): () => number {
@@ -105,7 +106,9 @@ const thumbCache = new Map<string, string>();
 function generateSurface(kind: 'terrain' | 'floor' | 'roof', id: string): HTMLCanvasElement {
   const [canvas, ctx] = makeCanvas(SURFACE_SIZE, SURFACE_SIZE);
   const rand = mulberry32(id.split('').reduce((acc, c) => acc * 31 + c.charCodeAt(0), 17));
-  paintSurface(ctx, kind, id, rand);
+  const cyber = CYBER_SURFACES[id];
+  if (cyber) cyber(ctx, rand);
+  else paintSurface(ctx, kind, id, rand);
   return canvas;
 }
 

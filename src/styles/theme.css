@@ -157,8 +157,30 @@ input[type='color'] {
   font-size: 13px;
   letter-spacing: 0.02em;
   color: var(--text-primary);
-  padding-right: 10px;
+  padding: 4px 10px 4px 4px;
+  border-radius: var(--radius-sm);
   border-right: 1px solid var(--border-subtle);
+  transition: background 0.14s, color 0.14s;
+}
+
+.brand-switcher:hover {
+  background: var(--bg-panel-hover);
+}
+
+.variant-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.variant-dot-gato {
+  background: linear-gradient(135deg, #d98c36, #9b5218);
+}
+
+.variant-dot-cyber {
+  background: linear-gradient(135deg, #c04dff, #00f0ff);
+  box-shadow: 0 0 8px rgba(192, 77, 255, 0.7);
 }
 
 .brand-badge {
@@ -1131,4 +1153,123 @@ input[type='color'] {
     width: 94vw !important;
     max-height: 88dvh !important;
   }
+}
+
+/* =========================================================
+   CyberGato MapMaker — Purple Neon Cyberpunk Variant
+   ========================================================= */
+.app-shell[data-variant='cybergato'] {
+  --bg-app: #0a0614;
+  --bg-panel: #120b24;
+  --bg-panel-elevated: #1c1236;
+  --bg-panel-hover: #28194c;
+  --bg-input: #080512;
+  --bg-canvas: #06030e;
+
+  --border-subtle: #311f5c;
+  --border-strong: #7c3aed;
+
+  --text-primary: #f4ebff;
+  --text-secondary: #c1aae6;
+  --text-muted: #846bad;
+
+  --accent: #b84dff;
+  --accent-hover: #d38aff;
+  --accent-soft: rgba(184, 77, 255, 0.22);
+  --accent-teal: #00f0ff;
+  --danger: #ff3b7f;
+  --success: #2ee6a6;
+
+  background: var(--bg-app);
+  color: var(--text-primary);
+}
+
+.app-shell[data-variant='cybergato'] .topbar {
+  background: linear-gradient(90deg, #120b24 0%, #1a0f33 50%, #120b24 100%);
+  border-bottom-color: #4c2a85;
+  box-shadow: 0 2px 18px rgba(184, 77, 255, 0.16);
+}
+
+.app-shell[data-variant='cybergato'] .brand-badge {
+  background: linear-gradient(135deg, #c04dff 0%, #7c3aed 55%, #00f0ff 100%);
+  color: #090414;
+  font-size: 11px;
+  letter-spacing: -0.04em;
+  box-shadow: 0 0 12px rgba(192, 77, 255, 0.6);
+}
+
+.app-shell[data-variant='cybergato'] .brand-title {
+  background: linear-gradient(90deg, #f3e8ff 0%, #d896ff 55%, #67f3ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.app-shell[data-variant='cybergato'] .topbar-btn.primary,
+.app-shell[data-variant='cybergato'] .btn-primary,
+.app-shell[data-variant='cybergato'] .chip.active,
+.app-shell[data-variant='cybergato'] .action-pill-btn.primary,
+.app-shell[data-variant='cybergato'] .canvas-fab-btn.active {
+  background: linear-gradient(135deg, #b84dff, #8b2cf5);
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(184, 77, 255, 0.42);
+}
+
+.app-shell[data-variant='cybergato'] .topbar-btn.primary:hover,
+.app-shell[data-variant='cybergato'] .btn-primary:hover {
+  background: linear-gradient(135deg, #ca6eff, #9d44ff);
+  color: #ffffff;
+}
+
+.app-shell[data-variant='cybergato'] .rail-btn.active {
+  box-shadow: inset 2px 0 0 var(--accent), 0 0 12px rgba(184, 77, 255, 0.25);
+}
+
+@media (max-width: 860px) {
+  .app-shell[data-variant='cybergato'] .rail-btn.active {
+    box-shadow: inset 0 -2px 0 var(--accent), 0 0 12px rgba(184, 77, 255, 0.25);
+  }
+}
+
+.app-shell[data-variant='cybergato'] .canvas-stage {
+  background: radial-gradient(circle at 50% 45%, #160c2e 0%, #06030e 100%);
+}
+
+.app-shell[data-variant='cybergato'] .statusbar {
+  background: #0d071c;
+  border-top-color: #3a226b;
+}
+
+.app-shell[data-variant='cybergato'] .modal-card,
+.app-shell[data-variant='cybergato'] .dropdown-menu {
+  box-shadow: 0 16px 44px rgba(8, 3, 20, 0.85), 0 0 22px rgba(184, 77, 255, 0.2);
+}
+
+.app-shell[data-variant='cybergato'] .toggle-btn.active,
+.app-shell[data-variant='cybergato'] .swatch-card.active,
+.app-shell[data-variant='cybergato'] .prop-card.active,
+.app-shell[data-variant='cybergato'] .level-row.active {
+  box-shadow: 0 0 10px rgba(184, 77, 255, 0.22);
+}
+
+.app-shell[data-variant='cybergato'] ::-webkit-scrollbar-thumb {
+  background: #432a73;
+}
+
+.app-shell[data-variant='cybergato'] ::-webkit-scrollbar-thumb:hover {
+  background: #6e44b8;
+}
+
+/* Classic Gato MapMaker content folded inside CyberGato */
+.classic-tab {
+  margin-top: 8px;
+  border-top: 1px dashed var(--border-strong);
+  padding-top: 8px;
+}
+
+.classic-tab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
 }

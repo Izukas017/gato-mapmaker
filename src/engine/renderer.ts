@@ -31,6 +31,7 @@ import {
   getPropSprite,
 } from './props';
 import { drawPortals, drawWallStroke } from './structures';
+import { cyberPathLayers } from './cyber/paths';
 import { getRipplePattern, getRoadPattern, getTexturePattern } from './textures';
 
 export interface RenderOptions {
@@ -629,7 +630,9 @@ function pathLayers(
     ctx.stroke();
   };
 
-  if (path.style === 'dirt_road') {
+  if (path.style.startsWith('cy_')) {
+    cyberPathLayers({ path, line, w, paint, marks, across, dab, offsetLine });
+  } else if (path.style === 'dirt_road') {
     const earth = getRoadPattern(ctx, ppg / 128) ?? '#96794f';
     paint('rgba(74, 56, 32, 0.22)', w * 1.34);
     paint('rgba(84, 64, 38, 0.4)', w * 1.16);

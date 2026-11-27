@@ -29,6 +29,16 @@ import {
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
 import { NumberSliderRow } from './NumberSliderRow';
+import { ClassicTab, StyleOptions, useCyberMode, VariantList } from './VariantContent';
+import {
+  CYBER_FLOORS,
+  CYBER_PATHS,
+  CYBER_PORTALS,
+  CYBER_ROOFS,
+  CYBER_TERRAIN,
+  CYBER_WALLS,
+  isCyber,
+} from '../engine/cyber/catalog';
 import type {
   BrushShape,
   PathStyleId,
@@ -135,8 +145,19 @@ export function ToolDrawer() {
     rugs: true,
     lighting: true,
     custom: true,
+    // CyberGato: only vehicles start unfolded
+    cy_street: true,
+    cy_signs: true,
+    cy_home: true,
+    cy_tech: true,
+    cy_nightlife: true,
+    cy_industrial: true,
+    cy_security: true,
+    cy_nature: true,
+    cy_lighting: true,
   });
   const [propQuery, setPropQuery] = useState('');
+  const cyberMode = useCyberMode();
   const uploadRef = useRef<HTMLInputElement>(null);
 
   const activeLevel =
@@ -167,8 +188,10 @@ export function ToolDrawer() {
         );
       });
       return { ...cat, items };
-    }).filter((g) => g.items.length > 0 || (g.id === 'custom' && !q && doc.customAssets.length > 0));
-  }, [doc.customAssets, propQuery]);
+    })
+      .filter((g) => cyberMode || !isCyber(g.id))
+      .filter((g) => g.items.length > 0 || (g.id === 'custom' && !q && doc.customAssets.length > 0));
+  }, [doc.customAssets, propQuery, cyberMode]);
 
   const toggleCategory = (id: string) => {
     setCollapsedCats((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -235,6 +258,65 @@ export function ToolDrawer() {
     );
   }
 
+
+  const renderGroups = (groups: typeof groupedProps) =>
+    groups.map((group) => {
+                const isCollapsed = !propQuery.trim() && !!collapsedCats[group.id];
+                return (
+                  <div key={group.id} className="accordion-group">
+                    <button
+                      className="accordion-header"
+                      onClick={() => toggleCategory(group.id)}
+                      aria-expanded={!isCollapsed}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                        {group.label}
+                      </span>
+                      <span className="accordion-count">{group.items.length}</span>
+                    </button>
+                    {!isCollapsed && (
+                      <div className="accordion-body">
+                        <div
+                          className="prop-grid"
+                          style={{
+                            gridTemplateColumns: `repeat(${propColumns}, minmax(0, 1fr))`,
+                          }}
+                        >
+                          {group.items.map((p) => (
+                            <button
+                              key={p.id}
+                              className={`prop-card ${ts.propId === p.id ? 'active' : ''}`}
+                              onClick={() =>
+                                updateTs({
+                                  propId: p.id,
+                                  propLayer: p.defaultLayer,
+                                  propShadow: p.defaultShadow,
+                                })
+                              }
+                            >
+                              <div className="prop-thumb">
+                                <img src={getPropThumbnail(p.id, doc.customAssets)} alt={p.name} />
+                              </div>
+                              <span
+                                style={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  width: '100%',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {p.name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+
   return (
     <div className="left-panel-shell" style={{ width: leftPanelWidth }}>
       <aside className="tool-drawer" aria-label="Opciones de herramienta">
@@ -292,8 +374,12 @@ export function ToolDrawer() {
           <>
             <div>
               <div className="section-label">Material del Pincel (con el que pintas)</div>
-              <div className="swatch-grid">
-                {TERRAIN_MATERIALS.map((m) => (
+              <VariantList
+                classic={TERRAIN_MATERIALS}
+                cyber={CYBER_TERRAIN}
+                render={(items) => (
+                  <div className="swatch-grid">
+                {items.map((m) => (
                   <button
                     key={m.id}
                     className={`swatch-card ${ts.terrainMaterial === m.id ? 'active' : ''}`}
@@ -306,7 +392,9 @@ export function ToolDrawer() {
                     <span>{m.name}</span>
                   </button>
                 ))}
-              </div>
+                  </div>
+                )}
+              />
             </div>
 
             <div>
@@ -399,11 +487,7 @@ export function ToolDrawer() {
                   value={activeLevel.terrainBase}
                   onChange={(e) => setTerrainBase(e.target.value as typeof activeLevel.terrainBase)}
                 >
-                  {TERRAIN_MATERIALS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
+                  <StyleOptions classic={TERRAIN_MATERIALS} cyber={CYBER_TERRAIN} value={activeLevel.terrainBase} />
                 </select>
               </div>
               {activeLevel.terrainStrokes.length > 0 && (
@@ -529,8 +613,12 @@ export function ToolDrawer() {
 
             <div>
               <div className="section-label">Suelo Interior</div>
-              <div className="swatch-grid">
-                {FLOOR_PATTERNS.map((f) => (
+              <VariantList
+                classic={FLOOR_PATTERNS}
+                cyber={CYBER_FLOORS}
+                render={(items) => (
+                  <div className="swatch-grid">
+                {items.map((f) => (
                   <button
                     key={f.id}
                     className={`swatch-card ${ts.floorPattern === f.id ? 'active' : ''}`}
@@ -543,12 +631,18 @@ export function ToolDrawer() {
                     <span>{f.name}</span>
                   </button>
                 ))}
-              </div>
+                  </div>
+                )}
+              />
             </div>
 
             <div>
               <div className="section-label">Muros Perimetrales</div>
-              <div className="swatch-grid">
+              <VariantList
+                classic={WALL_STYLES}
+                cyber={CYBER_WALLS}
+                render={(items) => (
+                  <div className="swatch-grid">
                 <button
                   className={`swatch-card ${ts.buildingWallStyle === null ? 'active' : ''}`}
                   onClick={() => updateTs({ buildingWallStyle: null })}
@@ -559,7 +653,7 @@ export function ToolDrawer() {
                   />
                   <span>Sin Muro</span>
                 </button>
-                {WALL_STYLES.map((w) => (
+                {items.map((w) => (
                   <button
                     key={w.id}
                     className={`swatch-card ${ts.buildingWallStyle === w.id ? 'active' : ''}`}
@@ -572,7 +666,9 @@ export function ToolDrawer() {
                     <span>{w.name}</span>
                   </button>
                 ))}
-              </div>
+                  </div>
+                )}
+              />
             </div>
 
             <div className="control-row">
@@ -594,8 +690,12 @@ export function ToolDrawer() {
           <>
             <div>
               <div className="section-label">Estilo de Muro</div>
-              <div className="swatch-grid">
-                {WALL_STYLES.map((w) => (
+              <VariantList
+                classic={WALL_STYLES}
+                cyber={CYBER_WALLS}
+                render={(items) => (
+                  <div className="swatch-grid">
+                {items.map((w) => (
                   <button
                     key={w.id}
                     className={`swatch-card ${ts.wallStyle === w.id ? 'active' : ''}`}
@@ -608,7 +708,9 @@ export function ToolDrawer() {
                     <span>{w.name}</span>
                   </button>
                 ))}
-              </div>
+                  </div>
+                )}
+              />
             </div>
             <div className="control-row">
               <span>Grosor</span>
@@ -636,8 +738,12 @@ export function ToolDrawer() {
           <>
             <div>
               <div className="section-label">Tipo de Portal</div>
-              <div className="swatch-grid">
-                {PORTAL_LIST.map((p) => (
+              <VariantList
+                classic={PORTAL_LIST}
+                cyber={CYBER_PORTALS}
+                render={(items) => (
+                  <div className="swatch-grid">
+                {items.map((p) => (
                   <button
                     key={p.id}
                     className={`swatch-card ${ts.portalKind === p.id ? 'active' : ''}`}
@@ -650,7 +756,9 @@ export function ToolDrawer() {
                     <span>{p.label}</span>
                   </button>
                 ))}
-              </div>
+                  </div>
+                )}
+              />
             </div>
             <NumberSliderRow
               label="Ancho"
@@ -687,8 +795,12 @@ export function ToolDrawer() {
           <>
             <div>
               <div className="section-label">Estilo de Camino</div>
-              <div className="swatch-grid">
-                {PATH_LIST.map((p) => (
+              <VariantList
+                classic={PATH_LIST}
+                cyber={CYBER_PATHS}
+                render={(items) => (
+                  <div className="swatch-grid">
+                {items.map((p) => (
                   <button
                     key={p.id}
                     className={`swatch-card ${ts.pathStyle === p.id ? 'active' : ''}`}
@@ -701,7 +813,9 @@ export function ToolDrawer() {
                     <span>{p.label}</span>
                   </button>
                 ))}
-              </div>
+                  </div>
+                )}
+              />
             </div>
             <div className="control-row">
               <span>Ancho</span>
@@ -729,7 +843,7 @@ export function ToolDrawer() {
           <>
             <input
               type="search"
-              placeholder="Buscar cama, taberna, tienda, trampa..."
+              placeholder={cyberMode ? 'Buscar coche, neón, servidor, contenedor...' : 'Buscar cama, taberna, tienda, trampa...'}
               value={propQuery}
               onChange={(e) => setPropQuery(e.target.value)}
             />
@@ -802,62 +916,15 @@ export function ToolDrawer() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {groupedProps.map((group) => {
-                const isCollapsed = !propQuery.trim() && !!collapsedCats[group.id];
-                return (
-                  <div key={group.id} className="accordion-group">
-                    <button
-                      className="accordion-header"
-                      onClick={() => toggleCategory(group.id)}
-                      aria-expanded={!isCollapsed}
-                    >
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
-                        {group.label}
-                      </span>
-                      <span className="accordion-count">{group.items.length}</span>
-                    </button>
-                    {!isCollapsed && (
-                      <div className="accordion-body">
-                        <div
-                          className="prop-grid"
-                          style={{
-                            gridTemplateColumns: `repeat(${propColumns}, minmax(0, 1fr))`,
-                          }}
-                        >
-                          {group.items.map((p) => (
-                            <button
-                              key={p.id}
-                              className={`prop-card ${ts.propId === p.id ? 'active' : ''}`}
-                              onClick={() =>
-                                updateTs({
-                                  propId: p.id,
-                                  propLayer: p.defaultLayer,
-                                  propShadow: p.defaultShadow,
-                                })
-                              }
-                            >
-                              <div className="prop-thumb">
-                                <img src={getPropThumbnail(p.id, doc.customAssets)} alt={p.name} />
-                              </div>
-                              <span
-                                style={{
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  width: '100%',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                {p.name}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {cyberMode ? renderGroups(groupedProps.filter((g) => isCyber(g.id))) : renderGroups(groupedProps)}
+              {cyberMode && (
+                <ClassicTab
+                  count={groupedProps.filter((g) => !isCyber(g.id)).reduce((n, g) => n + g.items.length, 0)}
+                  open={!!propQuery.trim()}
+                >
+                  {() => renderGroups(groupedProps.filter((g) => !isCyber(g.id)))}
+                </ClassicTab>
+              )}
             </div>
           </>
         )}
@@ -940,8 +1007,12 @@ export function ToolDrawer() {
           <>
             <div>
               <div className="section-label">Estilo de Tejado</div>
-              <div className="swatch-grid">
-                {ROOF_STYLES.map((r) => (
+              <VariantList
+                classic={ROOF_STYLES}
+                cyber={CYBER_ROOFS}
+                render={(items) => (
+                  <div className="swatch-grid">
+                {items.map((r) => (
                   <button
                     key={r.id}
                     className={`swatch-card ${ts.roofStyle === r.id ? 'active' : ''}`}
@@ -954,7 +1025,9 @@ export function ToolDrawer() {
                     <span>{r.name}</span>
                   </button>
                 ))}
-              </div>
+                  </div>
+                )}
+              />
             </div>
             <div className="control-row">
               <span>Opacidad</span>

@@ -16,6 +16,7 @@ export interface Point {
 }
 
 export type TerrainMaterialId =
+  | `cy_${string}` // CyberGato-only content
   | 'dirt'
   | 'grass'
   | 'cobblestone'
@@ -42,6 +43,7 @@ export type BrushShape =
   | 'octagon';
 
 export type FloorPatternId =
+  | `cy_${string}` // CyberGato-only content
   | 'wood_planks'
   | 'herringbone'
   | 'temple_teal'
@@ -62,6 +64,7 @@ export type FloorPatternId =
   | 'carpet_royal_blue';
 
 export type WallStyleId =
+  | `cy_${string}` // CyberGato-only content
   | 'stone_hewn'
   | 'timber_frame'
   | 'rough_masonry'
@@ -76,6 +79,7 @@ export type WallStyleId =
   | 'palisade_wood';
 
 export type PortalKind =
+  | `cy_${string}` // CyberGato-only content
   | 'door_wood'
   | 'door_double'
   | 'door_iron'
@@ -88,6 +92,7 @@ export type PortalKind =
   | 'window_bars';
 
 export type PathStyleId =
+  | `cy_${string}` // CyberGato-only content
   | 'dirt_road'
   | 'cobble_path'
   | 'wood_bridge'
@@ -105,6 +110,7 @@ export type PathStyleId =
   | 'fence_iron';
 
 export type RoofStyleId =
+  | `cy_${string}` // CyberGato-only content
   | 'slate_blue'
   | 'terracotta'
   | 'thatch'
@@ -311,6 +317,7 @@ export interface SelectionRef {
 }
 
 export type PropCategory =
+  | `cy_${string}` // CyberGato-only content
   | 'furniture'
   | 'bathroom'
   | 'village'

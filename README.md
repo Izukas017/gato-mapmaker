@@ -1,4 +1,4 @@
-# Gato MapMaker (`v0.7.3`)
+# Gato MapMaker (`v0.7.7`)
 
 Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) inspirado en el flujo de trabajo de **Dungeondraft**, ejecutándose directamente en el navegador con guardado automático local e iluminación dinámica con sombras en tiempo real.
 
@@ -56,6 +56,23 @@ Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) ins
 | Baño y aseo | 13 | Alfombras y tapices | 8 |
 | Tabernas y cocinas | 7 | Iluminación y fuego | 8 |
 | Tiendas y comercio | 6 | | |
+
+### Variante CyberGato MapMaker
+
+Desde el selector de la marca (arriba a la izquierda) se cambia a **CyberGato**, con **450 modelos propios** para ciudades cyberpunk:
+
+| Tipo | Nº | Tipo | Nº |
+| --- | --- | --- | --- |
+| Vehículos (coches, motos, drones, aerodinos…) | 93 | Hogar y apartamentos | 46 |
+| Calle y mobiliario urbano | 43 | Neones y publicidad | 39 |
+| Industria y puerto | 34 | Tecnología y robots | 32 |
+| Ocio nocturno | 22 | Iluminación neón | 21 |
+| Seguridad y defensa | 16 | Naturaleza urbana | 16 |
+| Terrenos | 14 | Suelos | 22 |
+| Muros | 16 | Puertas y ventanas | 10 |
+| Caminos (carreteras, raíles, cables…) | 16 | Tejados | 10 |
+
+Los modelos CyberGato solo aparecen en esa variante. El contenido clásico sigue disponible allí dentro de una pestaña plegada **Clásico · Gato MapMaker** con sus categorías; en Gato MapMaker no aparece nada cyber.
 
 ### Además
 

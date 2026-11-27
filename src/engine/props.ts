@@ -4,10 +4,13 @@ import { HOME } from './objects/home';
 import { INDOOR } from './objects/indoor';
 import { createKit, type Painter } from './objects/kit';
 import { OUTDOOR } from './objects/outdoor';
+import './objects/cyberVehicles';
+import './objects/cyberCity';
+import { CYBER_CATEGORIES, CYBER_LIGHTS, CYBER_OBJECTS, CYBER_PROPS } from './objects/cyberRegistry';
 import type { CustomAsset, PropCategory, PropDefinition } from '../types/map';
 
 // One hand-drawn painter per built-in object.
-export const OBJECTS: Record<string, Painter> = { ...HOME, ...INDOOR, ...OUTDOOR };
+export const OBJECTS: Record<string, Painter> = { ...HOME, ...INDOOR, ...OUTDOOR, ...CYBER_OBJECTS };
 
 export const PROP_CATEGORIES: { id: PropCategory; label: string }[] = [
   { id: 'furniture', label: 'Casas y Mobiliario' },
@@ -26,6 +29,7 @@ export const PROP_CATEGORIES: { id: PropCategory; label: string }[] = [
   { id: 'rugs', label: 'Alfombras y Tapices' },
   { id: 'lighting', label: 'Iluminación y Fuego' },
   { id: 'custom', label: 'Propios (Importados)' },
+  ...CYBER_CATEGORIES,
 ];
 
 export const BUILTIN_PROPS: PropDefinition[] = [
@@ -229,6 +233,7 @@ export const BUILTIN_PROPS: PropDefinition[] = [
   { id: 'chandelier_gold', name: 'Araña de Techo', category: 'lighting', widthTiles: 1.8, heightTiles: 1.8, defaultLayer: 'above_walls', defaultShadow: false, tags: ['lampara', 'arana', 'techo'] },
   { id: 'lantern', name: 'Farol Calle', category: 'lighting', widthTiles: 0.7, heightTiles: 0.7, defaultLayer: 'above_walls', defaultShadow: true, tags: ['farol', 'calle'] },
   { id: 'crystal_lamp', name: 'Farol Arcano', category: 'lighting', widthTiles: 0.85, heightTiles: 0.85, defaultLayer: 'above_floor', defaultShadow: true, tags: ['farol', 'cristal', 'magia'] },
+  ...CYBER_PROPS,
 ];
 
 const spriteCache = new Map<string, HTMLCanvasElement>();
@@ -258,6 +263,7 @@ export const PROP_LIGHTS: Record<string, { color: string; radius: number; intens
   crystal_cluster: { color: '#38bdf8', radius: 3.5, intensity: 0.8 },
   crystal_magenta: { color: '#d946ef', radius: 3.5, intensity: 0.8 },
   obelisk_runic: { color: '#4de3e8', radius: 3.5, intensity: 0.8 },
+  ...CYBER_LIGHTS,
 };
 
 const PX_PER_TILE = 96;

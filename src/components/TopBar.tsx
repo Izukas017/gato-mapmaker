@@ -1,5 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
+  Check,
+  ChevronDown,
   Download,
   FilePlus,
   FolderOpen,
@@ -38,6 +40,8 @@ export function TopBar({
   onOpenSettingsDialog,
 }: TopBarProps) {
   const doc = useMapStore((s) => s.doc);
+  const appVariant = useUiPrefs((s) => s.appVariant);
+  const setPrefs = useUiPrefs((s) => s.setPrefs);
   const leftPanelOpen = useUiPrefs((s) => s.leftPanelOpen);
   const toggleLeftPanel = useUiPrefs((s) => s.toggleLeftPanel);
   const rightPanelOpen = useUiPrefs((s) => s.rightPanelOpen);
@@ -57,7 +61,7 @@ export function TopBar({
   const updateGrid = useMapStore((s) => s.updateGrid);
   const setViewport = useMapStore((s) => s.setViewport);
 
-  const [menuOpen, setMenuOpen] = useState<'file' | 'presets' | null>(null);
+  const [menuOpen, setMenuOpen] = useState<'brand' | 'file' | 'presets' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { canInstall, showIosGuide, setShowIosGuide, triggerInstall } = usePwaInstall();
 
@@ -82,10 +86,63 @@ export function TopBar({
   return (
     <header className="topbar">
       <div className="topbar-group">
-        <div className="brand-mark">
-          <div className="brand-badge">G</div>
-          <span className="brand-title">Gato MapMaker</span>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>v0.7.3</span>
+        <div className="dropdown-wrap">
+          <button
+            type="button"
+            className="brand-mark brand-switcher"
+            onClick={() => setMenuOpen(menuOpen === 'brand' ? null : 'brand')}
+            title="Cambiar estilo / variante (Gato MapMaker o CyberGato MapMaker)"
+            aria-expanded={menuOpen === 'brand'}
+          >
+            <div className="brand-badge">{appVariant === 'cybergato' ? 'CG' : 'G'}</div>
+            <span className="brand-title">
+              {appVariant === 'cybergato' ? 'CyberGato MapMaker' : 'Gato MapMaker'}
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>v0.7.7</span>
+            <ChevronDown size={13} style={{ color: 'var(--text-muted)' }} />
+          </button>
+          {menuOpen === 'brand' && (
+            <div className="dropdown-menu" style={{ minWidth: 230 }} onMouseLeave={() => setMenuOpen(null)}>
+              <button
+                type="button"
+                className="dropdown-item"
+                onClick={() => {
+                  setPrefs({ appVariant: 'gato' });
+                  setMenuOpen(null);
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="variant-dot variant-dot-gato" />
+                  <span>
+                    <b>Gato MapMaker</b>
+                    <span style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)' }}>
+                      Estudio clásico · Ámbar
+                    </span>
+                  </span>
+                </span>
+                {appVariant === 'gato' && <Check size={14} style={{ color: 'var(--accent)' }} />}
+              </button>
+              <button
+                type="button"
+                className="dropdown-item"
+                onClick={() => {
+                  setPrefs({ appVariant: 'cybergato' });
+                  setMenuOpen(null);
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="variant-dot variant-dot-cyber" />
+                  <span>
+                    <b>CyberGato MapMaker</b>
+                    <span style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)' }}>
+                      Cyberpunk · Neón Morado
+                    </span>
+                  </span>
+                </span>
+                {appVariant === 'cybergato' && <Check size={14} style={{ color: 'var(--accent)' }} />}
+              </button>
+            </div>
+          )}
         </div>
 
         {menuOpen && (

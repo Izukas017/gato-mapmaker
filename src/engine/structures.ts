@@ -1,4 +1,5 @@
 import type { Point, PortalItem, WallStyleId } from '../types/map';
+import { CYBER_WALL_LOOKS, drawCyberPortal } from './cyber/structures';
 
 // Walls, doors and windows seen from above, built piece by piece along their length.
 
@@ -67,13 +68,14 @@ function block(
   box(ctx, x + 1, y + h * 0.78, Math.max(0, w - 2), h * 0.19, DARK, radius);
 }
 
-interface WallLook {
+export interface WallLook {
   outline: string;
   mortar: string;
   tones: string[];
   piece: [number, number]; // min and max piece length, in wall thicknesses
   // Paints one stretch from x to x+len, with the wall running from -w/2 to w/2.
   draw: (ctx: CanvasRenderingContext2D, x: number, len: number, w: number, rand: Rand, look: WallLook) => void;
+  corner?: (ctx: CanvasRenderingContext2D, w: number, rand: Rand, look: WallLook) => void;
 }
 
 const tone = (look: WallLook, rand: Rand) => look.tones[Math.floor(rand() * look.tones.length)];
@@ -309,7 +311,7 @@ export function drawWallStroke(
   drawShadow: boolean
 ) {
   if (points.length < 2) return;
-  const look = WALLS[style] ?? WALLS.stone_hewn;
+  const look = WALLS[style] ?? CYBER_WALL_LOOKS[style] ?? WALLS.stone_hewn;
   const w = Math.max(4, thicknessTiles * ppg);
   const path = () => {
     ctx.beginPath();
@@ -379,7 +381,9 @@ export function drawWallStroke(
     ctx.translate(p.x * ppg, p.y * ppg);
     ctx.rotate(Math.atan2(other.y - p.y, other.x - p.x));
     const rand = seeded(p.x * 3571 + p.y * 27644);
-    if (style === 'hedge_wall' || style === 'cave_rock' || style === 'palisade_wood') {
+    if (look.corner) {
+      look.corner(ctx, w, rand, look);
+    } else if (style === 'hedge_wall' || style === 'cave_rock' || style === 'palisade_wood') {
       ctx.beginPath();
       ctx.arc(0, 0, w * 0.55, 0, TAU);
       ctx.clip();
@@ -490,6 +494,11 @@ export function drawPortals(
 
     const w = p.width * ppg;
     const h = Math.max(10, ppg * 0.28);
+    if (p.kind.startsWith('cy_')) {
+      drawCyberPortal(ctx, p, w, h);
+      ctx.restore();
+      continue;
+    }
     const line = Math.max(1, h * 0.08);
     const jamb = Math.max(5, h * 0.42);
     const jambs = () => {

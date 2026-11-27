@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { CheckCircle2, RotateCcw, Smartphone, Trash2, X } from 'lucide-react';
 import { exportMap } from '../engine/exporter';
 import { TERRAIN_MATERIALS } from '../engine/textures';
+import { CYBER_TERRAIN } from '../engine/cyber/catalog';
+import { StyleOptions } from './VariantContent';
 import { usePwaInstall } from '../hooks/usePwaInstall';
 import { clearSavedMap, useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
@@ -86,11 +88,7 @@ export function NewMapDialog({ onClose }: NewMapDialogProps) {
               onChange={(e) => setTerrain(e.target.value as TerrainMaterialId)}
               style={{ width: 180 }}
             >
-              {TERRAIN_MATERIALS.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
+              <StyleOptions classic={TERRAIN_MATERIALS} cyber={CYBER_TERRAIN} value={terrain} />
             </select>
           </div>
         </div>

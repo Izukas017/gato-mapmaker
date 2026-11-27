@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 
+export type AppVariant = 'gato' | 'cybergato';
+
 export interface UiPrefs {
+  appVariant: AppVariant;
   leftPanelOpen: boolean;
   leftPanelWidth: number;
   rightPanelOpen: boolean;
@@ -17,6 +20,7 @@ export interface UiPrefs {
 const PREFS_KEY = 'gato_mapmaker_prefs_v1';
 
 export const DEFAULT_UI_PREFS: UiPrefs = {
+  appVariant: 'gato',
   leftPanelOpen: true,
   leftPanelWidth: 276,
   rightPanelOpen: true,
@@ -97,6 +101,7 @@ export const useUiPrefs = create<UiPrefsStore>((set) => ({
         }
       }
       const next: UiPrefs = {
+        appVariant: patch.appVariant ?? s.appVariant,
         leftPanelOpen: leftOpen,
         leftPanelWidth: clampWidth(patch.leftPanelWidth, s.leftPanelWidth),
         rightPanelOpen: rightOpen,
