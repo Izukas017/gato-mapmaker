@@ -40,6 +40,7 @@ export interface RenderOptions {
 let lightCanvas: HTMLCanvasElement | null = null;
 let waterCanvas: HTMLCanvasElement | null = null;
 let strokeMaskCanvas: HTMLCanvasElement | null = null;
+let tintCanvas: HTMLCanvasElement | null = null;
 
 function getOffscreen(
   existing: HTMLCanvasElement | null,
@@ -689,19 +690,38 @@ function drawObjectsLayer(
       ctx.shadowOffsetY = off * 1.2;
     }
 
+    let drawSource: CanvasImageSource | null = null;
     if (obj.propId.startsWith('custom:')) {
       const cid = obj.propId.slice('custom:'.length);
       const asset = customAssets.find((a) => a.id === cid);
       if (asset) {
         const img = getCustomImage(asset, onAssetLoaded);
         if (img.complete && img.naturalWidth > 0) {
-          ctx.drawImage(img, -w / 2, -h / 2, w, h);
+          drawSource = img;
         }
       }
     } else {
-      const sprite = getPropSprite(obj.propId);
-      if (sprite) {
-        ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+      drawSource = getPropSprite(obj.propId);
+    }
+
+    if (drawSource) {
+      if (obj.tint) {
+        const tw = Math.max(8, Math.round(w));
+        const th = Math.max(8, Math.round(h));
+        const tc = getOffscreen(tintCanvas, tw, th);
+        tintCanvas = tc;
+        const tctx = tc.getContext('2d')!;
+        tctx.clearRect(0, 0, tw, th);
+        tctx.globalCompositeOperation = 'source-over';
+        tctx.globalAlpha = 1;
+        tctx.drawImage(drawSource, 0, 0, tw, th);
+        tctx.globalCompositeOperation = 'source-atop';
+        tctx.fillStyle = obj.tint;
+        tctx.globalAlpha = 0.45;
+        tctx.fillRect(0, 0, tw, th);
+        ctx.drawImage(tc, -w / 2, -h / 2, w, h);
+      } else {
+        ctx.drawImage(drawSource, -w / 2, -h / 2, w, h);
       }
     }
 
@@ -789,7 +809,20 @@ function drawLighting(
   level: MapLevel,
   ppg: number
 ) {
-  if (!doc.ambient.enabled && level.lights.length === 0) return;
+  const objectLights = level.objects
+    .filter((o) => o.light?.enabled)
+    .map((o) => ({
+      id: `obj_${o.id}`,
+      x: o.x,
+      y: o.y,
+      color: o.light!.color,
+      radius: o.light!.radius,
+      intensity: o.light!.intensity,
+      castShadows: o.light!.castShadows,
+    }));
+
+  const allLights = [...level.lights, ...objectLights];
+  if (!doc.ambient.enabled && allLights.length === 0) return;
 
   const mapW = Math.max(1, Math.round(doc.width * ppg));
   const mapH = Math.max(1, Math.round(doc.height * ppg));
@@ -812,7 +845,7 @@ function drawLighting(
   // Additive light accumulation onto lightmap
   lctx.globalCompositeOperation = 'lighter';
 
-  for (const light of level.lights) {
+  for (const light of allLights) {
     const rgb = hexToRgb(light.color);
     const rPx = light.radius * ppg;
     const lx = light.x * ppg;
@@ -848,7 +881,7 @@ function drawLighting(
 
   // Soft warm bloom pass on top for glowing torches/braziers
   ctx.globalCompositeOperation = 'screen';
-  for (const light of level.lights) {
+  for (const light of allLights) {
     const rgb = hexToRgb(light.color);
     const rPx = light.radius * ppg * 0.55;
     const lx = light.x * ppg;

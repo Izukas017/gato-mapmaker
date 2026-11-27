@@ -111,6 +111,7 @@ interface MapStoreState {
   createNewMap: (name: string, width: number, height: number, terrain: TerrainMaterialId) => void;
   loadDocument: (doc: MapDocument) => void;
   setMapName: (name: string) => void;
+  updateMapMeta: (patch: Partial<Pick<MapDocument, 'width' | 'height' | 'pixelsPerGrid'>>) => void;
   updateAmbient: (patch: Partial<AmbientSettings>) => void;
   updateGrid: (patch: Partial<GridSettings>) => void;
   toggleLayer: (key: keyof LayerVisibility) => void;
@@ -138,9 +139,13 @@ interface MapStoreState {
 
   // Selection updates
   updateSelectedObject: (patch: Partial<MapObject>, recordUndo?: boolean) => void;
+  reorderSelectedObject: (direction: 'front' | 'back') => void;
   updateSelectedLight: (patch: Partial<LightSource>, recordUndo?: boolean) => void;
   updateSelectedPortal: (patch: Partial<PortalItem>, recordUndo?: boolean) => void;
   updateSelectedRoom: (patch: Partial<RoomShape>, recordUndo?: boolean) => void;
+  updateSelectedWall: (patch: Partial<WallPolyline>, recordUndo?: boolean) => void;
+  updateSelectedPath: (patch: Partial<PathItem>, recordUndo?: boolean) => void;
+  updateSelectedRoof: (patch: Partial<RoofShape>, recordUndo?: boolean) => void;
   moveSelectedBy: (dx: number, dy: number, recordUndo?: boolean) => void;
   duplicateSelected: () => void;
   deleteSelected: () => void;
@@ -307,6 +312,11 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
 
   setMapName: (name) =>
     set((s) => ({ doc: { ...s.doc, name } })),
+
+  updateMapMeta: (patch) =>
+    set((s) => ({
+      doc: { ...s.doc, ...patch },
+    })),
 
   updateAmbient: (patch) =>
     set((s) => ({
@@ -503,6 +513,22 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       return recordUndo ? pushCommit(s, next) : { doc: next };
     }),
 
+  reorderSelectedObject: (direction) =>
+    set((s) => {
+      if (s.selection?.kind !== 'object') return s;
+      const id = s.selection.id;
+      const next = updateActiveLevel(s.doc, (l) => {
+        const idx = l.objects.findIndex((o) => o.id === id);
+        if (idx === -1) return l;
+        const copy = [...l.objects];
+        const [item] = copy.splice(idx, 1);
+        if (direction === 'front') copy.push(item);
+        else copy.unshift(item);
+        return { ...l, objects: copy };
+      });
+      return pushCommit(s, next);
+    }),
+
   updateSelectedLight: (patch, recordUndo = true) =>
     set((s) => {
       if (s.selection?.kind !== 'light') return s;
@@ -532,6 +558,39 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       const next = updateActiveLevel(s.doc, (l) => ({
         ...l,
         rooms: l.rooms.map((it) => (it.id === id ? { ...it, ...patch } : it)),
+      }));
+      return recordUndo ? pushCommit(s, next) : { doc: next };
+    }),
+
+  updateSelectedWall: (patch, recordUndo = true) =>
+    set((s) => {
+      if (s.selection?.kind !== 'wall') return s;
+      const id = s.selection.id;
+      const next = updateActiveLevel(s.doc, (l) => ({
+        ...l,
+        walls: l.walls.map((it) => (it.id === id ? { ...it, ...patch } : it)),
+      }));
+      return recordUndo ? pushCommit(s, next) : { doc: next };
+    }),
+
+  updateSelectedPath: (patch, recordUndo = true) =>
+    set((s) => {
+      if (s.selection?.kind !== 'path') return s;
+      const id = s.selection.id;
+      const next = updateActiveLevel(s.doc, (l) => ({
+        ...l,
+        paths: l.paths.map((it) => (it.id === id ? { ...it, ...patch } : it)),
+      }));
+      return recordUndo ? pushCommit(s, next) : { doc: next };
+    }),
+
+  updateSelectedRoof: (patch, recordUndo = true) =>
+    set((s) => {
+      if (s.selection?.kind !== 'roof') return s;
+      const id = s.selection.id;
+      const next = updateActiveLevel(s.doc, (l) => ({
+        ...l,
+        roofs: l.roofs.map((it) => (it.id === id ? { ...it, ...patch } : it)),
       }));
       return recordUndo ? pushCommit(s, next) : { doc: next };
     }),

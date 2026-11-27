@@ -139,6 +139,14 @@ export interface PathItem {
   fadeEnds: boolean;
 }
 
+export interface ObjectLightConfig {
+  enabled: boolean;
+  color: string;
+  radius: number;
+  intensity: number;
+  castShadows: boolean;
+}
+
 export interface MapObject {
   id: string;
   propId: string; // built-in prop id or custom:<id>
@@ -151,7 +159,8 @@ export interface MapObject {
   opacity: number;
   layer: PropLayer;
   castShadow: boolean;
-  shadowOffset: number; // 0..1
+  shadowOffset: number; // 0..2
+  light?: ObjectLightConfig;
 }
 
 export interface LightSource {

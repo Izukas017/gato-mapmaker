@@ -1,16 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  ArrowDownToLine,
+  ArrowUpToLine,
   Copy,
   Eye,
   EyeOff,
+  FlipHorizontal,
+  FlipVertical,
   Layers,
   Plus,
+  SlidersHorizontal,
   Sun,
   Trash2,
 } from 'lucide-react';
-import { FLOOR_PATTERNS } from '../engine/textures';
+import { FLOOR_PATTERNS, ROOF_STYLES, WALL_STYLES } from '../engine/textures';
 import { useMapStore } from '../store/useMapStore';
-import type { FloorPatternId, LayerVisibility, PropLayer } from '../types/map';
+import type {
+  FloorPatternId,
+  LayerVisibility,
+  PathStyleId,
+  PortalKind,
+  PropLayer,
+  RoofStyleId,
+  WallStyleId,
+} from '../types/map';
 
 const LAYER_ITEMS: { key: keyof LayerVisibility; label: string }[] = [
   { key: 'lighting', label: 'Iluminación y Sombras' },
@@ -34,22 +47,59 @@ const AMBIENT_PRESETS = [
   { label: 'Mazmorra', color: '#2b3345', intensity: 0.18 },
 ];
 
+const PORTAL_TYPES: { id: PortalKind; label: string }[] = [
+  { id: 'door_wood', label: 'Puerta Madera' },
+  { id: 'door_double', label: 'Puerta Doble' },
+  { id: 'door_iron', label: 'Puerta Hierro' },
+  { id: 'archway', label: 'Arco Abierto' },
+  { id: 'window_glass', label: 'Ventana Cristal' },
+  { id: 'window_stained', label: 'Vidriera Templo' },
+];
+
+const PATH_STYLES: { id: PathStyleId; label: string }[] = [
+  { id: 'dirt_road', label: 'Camino Tierra' },
+  { id: 'cobble_path', label: 'Calzada Adoquín' },
+  { id: 'wood_bridge', label: 'Puente Madera' },
+  { id: 'carpet_teal', label: 'Alfombra Templo' },
+  { id: 'carpet_crimson', label: 'Alfombra Real' },
+  { id: 'hedge', label: 'Seto Jardín' },
+  { id: 'cliff_edge', label: 'Borde Acantilado' },
+];
+
+const SELECTION_LABELS = {
+  object: 'Objeto',
+  light: 'Luz',
+  portal: 'Puerta / Ventana',
+  room: 'Habitación',
+  wall: 'Muro',
+  path: 'Camino',
+  roof: 'Tejado',
+} as const;
+
 export function RightPanel() {
   const doc = useMapStore((s) => s.doc);
   const selection = useMapStore((s) => s.selection);
 
   const toggleLayer = useMapStore((s) => s.toggleLayer);
   const updateAmbient = useMapStore((s) => s.updateAmbient);
+  const updateGrid = useMapStore((s) => s.updateGrid);
+  const updateMapMeta = useMapStore((s) => s.updateMapMeta);
   const setActiveLevel = useMapStore((s) => s.setActiveLevel);
   const addLevel = useMapStore((s) => s.addLevel);
   const deleteLevel = useMapStore((s) => s.deleteLevel);
 
   const updateSelectedObject = useMapStore((s) => s.updateSelectedObject);
+  const reorderSelectedObject = useMapStore((s) => s.reorderSelectedObject);
   const updateSelectedLight = useMapStore((s) => s.updateSelectedLight);
   const updateSelectedPortal = useMapStore((s) => s.updateSelectedPortal);
   const updateSelectedRoom = useMapStore((s) => s.updateSelectedRoom);
+  const updateSelectedWall = useMapStore((s) => s.updateSelectedWall);
+  const updateSelectedPath = useMapStore((s) => s.updateSelectedPath);
+  const updateSelectedRoof = useMapStore((s) => s.updateSelectedRoof);
   const duplicateSelected = useMapStore((s) => s.duplicateSelected);
   const deleteSelected = useMapStore((s) => s.deleteSelected);
+
+  const [uniformScale, setUniformScale] = useState(true);
 
   const activeLevel =
     doc.levels.find((l) => l.id === doc.activeLevelId) ?? doc.levels[0];
@@ -70,11 +120,23 @@ export function RightPanel() {
     selection?.kind === 'room'
       ? activeLevel.rooms.find((r) => r.id === selection.id)
       : null;
+  const selectedWall =
+    selection?.kind === 'wall'
+      ? activeLevel.walls.find((w) => w.id === selection.id)
+      : null;
+  const selectedPath =
+    selection?.kind === 'path'
+      ? activeLevel.paths.find((p) => p.id === selection.id)
+      : null;
+  const selectedRoof =
+    selection?.kind === 'roof'
+      ? activeLevel.roofs.find((r) => r.id === selection.id)
+      : null;
 
   return (
     <aside className="right-panel" aria-label="Inspector y capas">
       <div className="panel-header">
-        <span>Inspector y Capas</span>
+        <span>Inspector y Configuración</span>
       </div>
 
       <div className="panel-scroll">
@@ -93,7 +155,7 @@ export function RightPanel() {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span className="section-label" style={{ marginBottom: 0, color: 'var(--accent-hover)' }}>
-                Selección ({selection.kind})
+                {SELECTION_LABELS[selection.kind]}
               </span>
               <div style={{ display: 'flex', gap: 4 }}>
                 {(selection.kind === 'object' || selection.kind === 'light') && (
@@ -137,27 +199,113 @@ export function RightPanel() {
                     {Math.round(((selectedObject.rotation * 180) / Math.PI + 360) % 360)}°
                   </span>
                 </div>
+
+                <button
+                  className={`toggle-btn ${uniformScale ? 'active' : ''}`}
+                  onClick={() => setUniformScale(!uniformScale)}
+                >
+                  <span>Escala Proporcional</span>
+                  <span>{uniformScale ? 'SÍ' : 'NO'}</span>
+                </button>
+
+                {uniformScale ? (
+                  <div className="control-row">
+                    <span>Tamaño</span>
+                    <input
+                      type="range"
+                      min={0.25}
+                      max={3.5}
+                      step={0.05}
+                      value={Math.abs(selectedObject.scaleX)}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        updateSelectedObject(
+                          {
+                            scaleX: selectedObject.scaleX < 0 ? -v : v,
+                            scaleY: selectedObject.scaleY < 0 ? -v : v,
+                          },
+                          false
+                        );
+                      }}
+                    />
+                    <span className="control-val">{Math.abs(selectedObject.scaleX).toFixed(2)}x</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="control-row">
+                      <span>Ancho (X)</span>
+                      <input
+                        type="range"
+                        min={0.25}
+                        max={3.5}
+                        step={0.05}
+                        value={Math.abs(selectedObject.scaleX)}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          updateSelectedObject(
+                            { scaleX: selectedObject.scaleX < 0 ? -v : v },
+                            false
+                          );
+                        }}
+                      />
+                      <span className="control-val">{Math.abs(selectedObject.scaleX).toFixed(2)}x</span>
+                    </div>
+                    <div className="control-row">
+                      <span>Alto (Y)</span>
+                      <input
+                        type="range"
+                        min={0.25}
+                        max={3.5}
+                        step={0.05}
+                        value={Math.abs(selectedObject.scaleY)}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          updateSelectedObject(
+                            { scaleY: selectedObject.scaleY < 0 ? -v : v },
+                            false
+                          );
+                        }}
+                      />
+                      <span className="control-val">{Math.abs(selectedObject.scaleY).toFixed(2)}x</span>
+                    </div>
+                  </>
+                )}
+
                 <div className="control-row">
-                  <span>Escala</span>
+                  <span>Opacidad</span>
                   <input
                     type="range"
-                    min={0.3}
-                    max={2.8}
+                    min={0.1}
+                    max={1}
                     step={0.05}
-                    value={Math.abs(selectedObject.scaleX)}
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value);
-                      updateSelectedObject(
-                        {
-                          scaleX: selectedObject.scaleX < 0 ? -v : v,
-                          scaleY: selectedObject.scaleY < 0 ? -v : v,
-                        },
-                        false
-                      );
-                    }}
+                    value={selectedObject.opacity}
+                    onChange={(e) =>
+                      updateSelectedObject({ opacity: parseFloat(e.target.value) }, false)
+                    }
                   />
-                  <span className="control-val">{Math.abs(selectedObject.scaleX).toFixed(2)}x</span>
+                  <span className="control-val">{Math.round(selectedObject.opacity * 100)}%</span>
                 </div>
+
+                <div className="control-row">
+                  <span>Tinte</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="color"
+                      value={selectedObject.tint ?? '#ffffff'}
+                      onChange={(e) => updateSelectedObject({ tint: e.target.value }, false)}
+                    />
+                    {selectedObject.tint && (
+                      <button
+                        className="btn-secondary"
+                        style={{ padding: '2px 6px', fontSize: 10 }}
+                        onClick={() => updateSelectedObject({ tint: undefined })}
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div className="control-row">
                   <span>Capa</span>
                   <select
@@ -172,6 +320,43 @@ export function RightPanel() {
                     <option value="roof">Tejado</option>
                   </select>
                 </div>
+
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button
+                    className="btn-secondary"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '4px 6px', fontSize: 11 }}
+                    onClick={() => updateSelectedObject({ scaleX: -selectedObject.scaleX })}
+                    title="Voltear horizontalmente"
+                  >
+                    <FlipHorizontal size={12} /> Voltear H
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '4px 6px', fontSize: 11 }}
+                    onClick={() => updateSelectedObject({ scaleY: -selectedObject.scaleY })}
+                    title="Voltear verticalmente"
+                  >
+                    <FlipVertical size={12} /> Voltear V
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button
+                    className="btn-secondary"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '4px 6px', fontSize: 11 }}
+                    onClick={() => reorderSelectedObject('front')}
+                  >
+                    <ArrowUpToLine size={12} /> Al frente
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '4px 6px', fontSize: 11 }}
+                    onClick={() => reorderSelectedObject('back')}
+                  >
+                    <ArrowDownToLine size={12} /> Atrás
+                  </button>
+                </div>
+
                 <button
                   className={`toggle-btn ${selectedObject.castShadow ? 'active' : ''}`}
                   onClick={() =>
@@ -181,6 +366,123 @@ export function RightPanel() {
                   <span>Sombra de objeto</span>
                   <span>{selectedObject.castShadow ? 'SÍ' : 'NO'}</span>
                 </button>
+
+                {selectedObject.castShadow && (
+                  <div className="control-row">
+                    <span>Sombra</span>
+                    <input
+                      type="range"
+                      min={0.2}
+                      max={2.0}
+                      step={0.1}
+                      value={selectedObject.shadowOffset}
+                      onChange={(e) =>
+                        updateSelectedObject(
+                          { shadowOffset: parseFloat(e.target.value) },
+                          false
+                        )
+                      }
+                    />
+                    <span className="control-val">{selectedObject.shadowOffset.toFixed(1)}</span>
+                  </div>
+                )}
+
+                <button
+                  className={`toggle-btn ${selectedObject.light?.enabled ? 'active' : ''}`}
+                  onClick={() => {
+                    const prev = selectedObject.light;
+                    updateSelectedObject({
+                      light: prev
+                        ? { ...prev, enabled: !prev.enabled }
+                        : {
+                            enabled: true,
+                            color: '#ffae42',
+                            radius: 5.0,
+                            intensity: 1.0,
+                            castShadows: true,
+                          },
+                    });
+                  }}
+                >
+                  <span>Genera Luz</span>
+                  <span>{selectedObject.light?.enabled ? 'SÍ' : 'NO'}</span>
+                </button>
+
+                {selectedObject.light?.enabled && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                      paddingLeft: 8,
+                      borderLeft: '2px solid var(--accent)',
+                    }}
+                  >
+                    <div className="control-row">
+                      <span>Color luz</span>
+                      <input
+                        type="color"
+                        value={selectedObject.light.color}
+                        onChange={(e) =>
+                          updateSelectedObject(
+                            { light: { ...selectedObject.light!, color: e.target.value } },
+                            false
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="control-row">
+                      <span>Radio luz</span>
+                      <input
+                        type="range"
+                        min={1.5}
+                        max={14}
+                        step={0.5}
+                        value={selectedObject.light.radius}
+                        onChange={(e) =>
+                          updateSelectedObject(
+                            { light: { ...selectedObject.light!, radius: parseFloat(e.target.value) } },
+                            false
+                          )
+                        }
+                      />
+                      <span className="control-val">{selectedObject.light.radius.toFixed(1)}</span>
+                    </div>
+                    <div className="control-row">
+                      <span>Intensidad</span>
+                      <input
+                        type="range"
+                        min={0.2}
+                        max={1.8}
+                        step={0.05}
+                        value={selectedObject.light.intensity}
+                        onChange={(e) =>
+                          updateSelectedObject(
+                            { light: { ...selectedObject.light!, intensity: parseFloat(e.target.value) } },
+                            false
+                          )
+                        }
+                      />
+                      <span className="control-val">
+                        {Math.round(selectedObject.light.intensity * 100)}%
+                      </span>
+                    </div>
+                    <button
+                      className={`toggle-btn ${selectedObject.light.castShadows ? 'active' : ''}`}
+                      onClick={() =>
+                        updateSelectedObject({
+                          light: {
+                            ...selectedObject.light!,
+                            castShadows: !selectedObject.light!.castShadows,
+                          },
+                        })
+                      }
+                    >
+                      <span>Sombras de luz</span>
+                      <span>{selectedObject.light.castShadows ? 'SÍ' : 'NO'}</span>
+                    </button>
+                  </div>
+                )}
               </>
             )}
 
@@ -236,6 +538,21 @@ export function RightPanel() {
 
             {selectedPortal && (
               <>
+                <div className="control-row">
+                  <span>Tipo</span>
+                  <select
+                    value={selectedPortal.kind}
+                    onChange={(e) =>
+                      updateSelectedPortal({ kind: e.target.value as PortalKind })
+                    }
+                  >
+                    {PORTAL_TYPES.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   className={`toggle-btn ${selectedPortal.open ? 'active' : ''}`}
                   onClick={() =>
@@ -247,6 +564,15 @@ export function RightPanel() {
                 >
                   <span>Puerta Abierta</span>
                   <span>{selectedPortal.open ? 'SÍ' : 'NO'}</span>
+                </button>
+                <button
+                  className={`toggle-btn ${selectedPortal.blocksLight ? 'active' : ''}`}
+                  onClick={() =>
+                    updateSelectedPortal({ blocksLight: !selectedPortal.blocksLight })
+                  }
+                >
+                  <span>Bloquea Luz</span>
+                  <span>{selectedPortal.blocksLight ? 'SÍ' : 'NO'}</span>
                 </button>
                 <div className="control-row">
                   <span>Ancho</span>
@@ -262,25 +588,268 @@ export function RightPanel() {
                   />
                   <span className="control-val">{selectedPortal.width.toFixed(1)}</span>
                 </div>
+                <div className="control-row">
+                  <span>Rotación</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={359}
+                    value={Math.round(((selectedPortal.angle * 180) / Math.PI + 360) % 360)}
+                    onChange={(e) =>
+                      updateSelectedPortal(
+                        { angle: (parseInt(e.target.value, 10) * Math.PI) / 180 },
+                        false
+                      )
+                    }
+                  />
+                  <span className="control-val">
+                    {Math.round(((selectedPortal.angle * 180) / Math.PI + 360) % 360)}°
+                  </span>
+                </div>
               </>
             )}
 
             {selectedRoom && (
-              <div className="control-row">
-                <span>Suelo</span>
-                <select
-                  value={selectedRoom.floor}
-                  onChange={(e) =>
-                    updateSelectedRoom({ floor: e.target.value as FloorPatternId })
+              <>
+                <div className="control-row">
+                  <span>Suelo</span>
+                  <select
+                    value={selectedRoom.floor}
+                    onChange={(e) =>
+                      updateSelectedRoom({ floor: e.target.value as FloorPatternId })
+                    }
+                  >
+                    {FLOOR_PATTERNS.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="control-row">
+                  <span>Rotar suelo</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={345}
+                    step={15}
+                    value={selectedRoom.floorRotation ?? 0}
+                    onChange={(e) =>
+                      updateSelectedRoom(
+                        { floorRotation: parseInt(e.target.value, 10) },
+                        false
+                      )
+                    }
+                  />
+                  <span className="control-val">{selectedRoom.floorRotation ?? 0}°</span>
+                </div>
+                <div className="control-row">
+                  <span>Tinte suelo</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="color"
+                      value={selectedRoom.floorTint ?? '#ffffff'}
+                      onChange={(e) =>
+                        updateSelectedRoom({ floorTint: e.target.value }, false)
+                      }
+                    />
+                    {selectedRoom.floorTint && (
+                      <button
+                        className="btn-secondary"
+                        style={{ padding: '2px 6px', fontSize: 10 }}
+                        onClick={() => updateSelectedRoom({ floorTint: undefined })}
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="control-row">
+                  <span>Muros</span>
+                  <select
+                    value={selectedRoom.wallStyle ?? ''}
+                    onChange={(e) =>
+                      updateSelectedRoom({
+                        wallStyle: (e.target.value || null) as WallStyleId | null,
+                      })
+                    }
+                  >
+                    <option value="">Sin Muro</option>
+                    {WALL_STYLES.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedRoom.wallStyle && (
+                  <>
+                    <div className="control-row">
+                      <span>Grosor</span>
+                      <input
+                        type="range"
+                        min={0.1}
+                        max={0.6}
+                        step={0.02}
+                        value={selectedRoom.wallThickness}
+                        onChange={(e) =>
+                          updateSelectedRoom(
+                            { wallThickness: parseFloat(e.target.value) },
+                            false
+                          )
+                        }
+                      />
+                      <span className="control-val">{selectedRoom.wallThickness.toFixed(2)}</span>
+                    </div>
+                    <button
+                      className={`toggle-btn ${selectedRoom.castShadows ? 'active' : ''}`}
+                      onClick={() =>
+                        updateSelectedRoom({ castShadows: !selectedRoom.castShadows })
+                      }
+                    >
+                      <span>Muros bloquean luz</span>
+                      <span>{selectedRoom.castShadows ? 'SÍ' : 'NO'}</span>
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+
+            {selectedWall && (
+              <>
+                <div className="control-row">
+                  <span>Estilo</span>
+                  <select
+                    value={selectedWall.style}
+                    onChange={(e) =>
+                      updateSelectedWall({ style: e.target.value as WallStyleId })
+                    }
+                  >
+                    {WALL_STYLES.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="control-row">
+                  <span>Grosor</span>
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={0.6}
+                    step={0.02}
+                    value={selectedWall.thickness}
+                    onChange={(e) =>
+                      updateSelectedWall(
+                        { thickness: parseFloat(e.target.value) },
+                        false
+                      )
+                    }
+                  />
+                  <span className="control-val">{selectedWall.thickness.toFixed(2)}</span>
+                </div>
+                <button
+                  className={`toggle-btn ${selectedWall.closed ? 'active' : ''}`}
+                  onClick={() => updateSelectedWall({ closed: !selectedWall.closed })}
+                >
+                  <span>Muro Cerrado</span>
+                  <span>{selectedWall.closed ? 'SÍ' : 'NO'}</span>
+                </button>
+                <button
+                  className={`toggle-btn ${selectedWall.castShadows ? 'active' : ''}`}
+                  onClick={() =>
+                    updateSelectedWall({ castShadows: !selectedWall.castShadows })
                   }
                 >
-                  {FLOOR_PATTERNS.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <span>Bloquea Luz y Sombras</span>
+                  <span>{selectedWall.castShadows ? 'SÍ' : 'NO'}</span>
+                </button>
+              </>
+            )}
+
+            {selectedPath && (
+              <>
+                <div className="control-row">
+                  <span>Estilo</span>
+                  <select
+                    value={selectedPath.style}
+                    onChange={(e) =>
+                      updateSelectedPath({ style: e.target.value as PathStyleId })
+                    }
+                  >
+                    {PATH_STYLES.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="control-row">
+                  <span>Ancho</span>
+                  <input
+                    type="range"
+                    min={0.3}
+                    max={4.0}
+                    step={0.1}
+                    value={selectedPath.width}
+                    onChange={(e) =>
+                      updateSelectedPath({ width: parseFloat(e.target.value) }, false)
+                    }
+                  />
+                  <span className="control-val">{selectedPath.width.toFixed(1)}</span>
+                </div>
+                <button
+                  className={`toggle-btn ${selectedPath.smooth ? 'active' : ''}`}
+                  onClick={() => updateSelectedPath({ smooth: !selectedPath.smooth })}
+                >
+                  <span>Curva Suavizada</span>
+                  <span>{selectedPath.smooth ? 'SÍ' : 'NO'}</span>
+                </button>
+                <button
+                  className={`toggle-btn ${selectedPath.fadeEnds ? 'active' : ''}`}
+                  onClick={() =>
+                    updateSelectedPath({ fadeEnds: !selectedPath.fadeEnds })
+                  }
+                >
+                  <span>Puntas Redondeadas</span>
+                  <span>{selectedPath.fadeEnds ? 'SÍ' : 'NO'}</span>
+                </button>
+              </>
+            )}
+
+            {selectedRoof && (
+              <>
+                <div className="control-row">
+                  <span>Estilo</span>
+                  <select
+                    value={selectedRoof.style}
+                    onChange={(e) =>
+                      updateSelectedRoof({ style: e.target.value as RoofStyleId })
+                    }
+                  >
+                    {ROOF_STYLES.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="control-row">
+                  <span>Opacidad</span>
+                  <input
+                    type="range"
+                    min={0.15}
+                    max={1}
+                    step={0.05}
+                    value={selectedRoof.opacity}
+                    onChange={(e) =>
+                      updateSelectedRoof({ opacity: parseFloat(e.target.value) }, false)
+                    }
+                  />
+                  <span className="control-val">{Math.round(selectedRoof.opacity * 100)}%</span>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -324,6 +893,63 @@ export function RightPanel() {
               value={doc.ambient.color}
               onChange={(e) => updateAmbient({ color: e.target.value, enabled: true })}
             />
+          </div>
+        </div>
+
+        {/* General Map & Grid Configuration */}
+        <div>
+          <div className="section-label" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <SlidersHorizontal size={12} /> Mapa y Cuadrícula
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="control-row">
+              <span>Tamaño</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="number"
+                  min={8}
+                  max={80}
+                  value={doc.width}
+                  onChange={(e) =>
+                    updateMapMeta({ width: Math.max(8, Math.min(80, parseInt(e.target.value, 10) || 24)) })
+                  }
+                  style={{ width: 52, textAlign: 'center' }}
+                  aria-label="Ancho del mapa en casillas"
+                />
+                <span>×</span>
+                <input
+                  type="number"
+                  min={8}
+                  max={80}
+                  value={doc.height}
+                  onChange={(e) =>
+                    updateMapMeta({ height: Math.max(8, Math.min(80, parseInt(e.target.value, 10) || 20)) })
+                  }
+                  style={{ width: 52, textAlign: 'center' }}
+                  aria-label="Alto del mapa en casillas"
+                />
+              </div>
+            </div>
+            <div className="control-row">
+              <span>Color grilla</span>
+              <input
+                type="color"
+                value={doc.grid.color}
+                onChange={(e) => updateGrid({ color: e.target.value })}
+              />
+            </div>
+            <div className="control-row">
+              <span>Opacidad grilla</span>
+              <input
+                type="range"
+                min={0.05}
+                max={0.8}
+                step={0.05}
+                value={doc.grid.opacity}
+                onChange={(e) => updateGrid({ opacity: parseFloat(e.target.value) })}
+              />
+              <span className="control-val">{Math.round(doc.grid.opacity * 100)}%</span>
+            </div>
           </div>
         </div>
 
