@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
 export interface UiPrefs {
+  leftPanelOpen: boolean;
+  leftPanelWidth: number;
   rightPanelOpen: boolean;
   rightPanelWidth: number;
   showCanvasHints: boolean;
@@ -14,6 +16,8 @@ export interface UiPrefs {
 const PREFS_KEY = 'gato_mapmaker_prefs_v1';
 
 export const DEFAULT_UI_PREFS: UiPrefs = {
+  leftPanelOpen: true,
+  leftPanelWidth: 276,
   rightPanelOpen: true,
   rightPanelWidth: 276,
   showCanvasHints: true,
@@ -24,6 +28,10 @@ export const DEFAULT_UI_PREFS: UiPrefs = {
   defaultExportPpg: 140,
 };
 
+function clampWidth(w: number | undefined, fallback: number): number {
+  return Math.max(220, Math.min(520, w ?? fallback));
+}
+
 function loadInitialPrefs(): UiPrefs {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -33,10 +41,8 @@ function loadInitialPrefs(): UiPrefs {
         return {
           ...DEFAULT_UI_PREFS,
           ...parsed,
-          rightPanelWidth: Math.max(
-            220,
-            Math.min(520, parsed.rightPanelWidth ?? DEFAULT_UI_PREFS.rightPanelWidth)
-          ),
+          leftPanelWidth: clampWidth(parsed.leftPanelWidth, DEFAULT_UI_PREFS.leftPanelWidth),
+          rightPanelWidth: clampWidth(parsed.rightPanelWidth, DEFAULT_UI_PREFS.rightPanelWidth),
         };
       }
     }
@@ -58,6 +64,7 @@ function savePrefs(prefs: UiPrefs) {
 
 interface UiPrefsStore extends UiPrefs {
   setPrefs: (patch: Partial<UiPrefs>) => void;
+  toggleLeftPanel: () => void;
   toggleRightPanel: () => void;
   resetPrefs: () => void;
 }
@@ -67,11 +74,10 @@ export const useUiPrefs = create<UiPrefsStore>((set) => ({
   setPrefs: (patch) =>
     set((s) => {
       const next: UiPrefs = {
+        leftPanelOpen: patch.leftPanelOpen ?? s.leftPanelOpen,
+        leftPanelWidth: clampWidth(patch.leftPanelWidth, s.leftPanelWidth),
         rightPanelOpen: patch.rightPanelOpen ?? s.rightPanelOpen,
-        rightPanelWidth: Math.max(
-          220,
-          Math.min(520, patch.rightPanelWidth ?? s.rightPanelWidth)
-        ),
+        rightPanelWidth: clampWidth(patch.rightPanelWidth, s.rightPanelWidth),
         showCanvasHints: patch.showCanvasHints ?? s.showCanvasHints,
         alwaysShowLightHandles:
           patch.alwaysShowLightHandles ?? s.alwaysShowLightHandles,
@@ -82,6 +88,12 @@ export const useUiPrefs = create<UiPrefsStore>((set) => ({
       };
       savePrefs(next);
       return next;
+    }),
+  toggleLeftPanel: () =>
+    set((s) => {
+      const next = { ...s, leftPanelOpen: !s.leftPanelOpen };
+      savePrefs(next);
+      return { leftPanelOpen: next.leftPanelOpen };
     }),
   toggleRightPanel: () =>
     set((s) => {

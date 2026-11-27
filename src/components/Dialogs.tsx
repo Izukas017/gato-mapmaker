@@ -239,6 +239,30 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
 
           <button
             type="button"
+            className={`toggle-btn ${prefs.leftPanelOpen ? 'active' : ''}`}
+            onClick={() => prefs.setPrefs({ leftPanelOpen: !prefs.leftPanelOpen })}
+          >
+            <span>Mostrar panel izquierdo (Herramientas)</span>
+            <span>{prefs.leftPanelOpen ? 'SÍ' : 'NO'}</span>
+          </button>
+
+          <div className="control-row">
+            <span>Ancho panel izquierdo</span>
+            <input
+              type="range"
+              min={220}
+              max={520}
+              step={8}
+              value={prefs.leftPanelWidth}
+              onChange={(e) =>
+                prefs.setPrefs({ leftPanelWidth: parseInt(e.target.value, 10) })
+              }
+            />
+            <span className="control-val">{prefs.leftPanelWidth}px</span>
+          </div>
+
+          <button
+            type="button"
             className={`toggle-btn ${prefs.rightPanelOpen ? 'active' : ''}`}
             onClick={() => prefs.setPrefs({ rightPanelOpen: !prefs.rightPanelOpen })}
           >

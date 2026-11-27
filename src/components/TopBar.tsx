@@ -6,6 +6,7 @@ import {
   Grid,
   Magnet,
   Map as MapIcon,
+  PanelLeft,
   PanelRight,
   Redo2,
   Save,
@@ -32,6 +33,8 @@ export function TopBar({
   onOpenSettingsDialog,
 }: TopBarProps) {
   const doc = useMapStore((s) => s.doc);
+  const leftPanelOpen = useUiPrefs((s) => s.leftPanelOpen);
+  const toggleLeftPanel = useUiPrefs((s) => s.toggleLeftPanel);
   const rightPanelOpen = useUiPrefs((s) => s.rightPanelOpen);
   const toggleRightPanel = useUiPrefs((s) => s.toggleRightPanel);
   const pastCount = useMapStore((s) => s.past.length);
@@ -76,7 +79,7 @@ export function TopBar({
         <div className="brand-mark">
           <div className="brand-badge">G</div>
           <span>Gato MapMaker</span>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>v0.2</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>v0.2.1</span>
         </div>
 
         <div className="dropdown-wrap">
@@ -262,12 +265,21 @@ export function TopBar({
         <div className="topbar-sep" />
 
         <button
+          className={`topbar-btn ${leftPanelOpen ? 'active' : ''}`}
+          onClick={toggleLeftPanel}
+          title="Abrir o cerrar panel izquierdo (Herramientas)"
+        >
+          <PanelLeft size={14} />
+          Panel Izq.
+        </button>
+
+        <button
           className={`topbar-btn ${rightPanelOpen ? 'active' : ''}`}
           onClick={toggleRightPanel}
-          title="Abrir o cerrar panel derecho"
+          title="Abrir o cerrar panel derecho (Inspector)"
         >
           <PanelRight size={14} />
-          Panel
+          Panel Der.
         </button>
 
         <button

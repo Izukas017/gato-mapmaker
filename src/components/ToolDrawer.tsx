@@ -1,5 +1,13 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, Upload } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Minus,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  Upload,
+} from 'lucide-react';
 import { uid } from '../engine/presets';
 import {
   BUILTIN_PROPS,
@@ -79,6 +87,32 @@ export function ToolDrawer() {
   const addCustomAsset = useMapStore((s) => s.addCustomAsset);
 
   const propColumns = useUiPrefs((s) => s.propColumns);
+  const leftPanelOpen = useUiPrefs((s) => s.leftPanelOpen);
+  const leftPanelWidth = useUiPrefs((s) => s.leftPanelWidth);
+  const setPrefs = useUiPrefs((s) => s.setPrefs);
+  const toggleLeftPanel = useUiPrefs((s) => s.toggleLeftPanel);
+
+  const [resizing, setResizing] = useState(false);
+  const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: PointerEvent) => {
+      if (!resizeStartRef.current) return;
+      const dx = e.clientX - resizeStartRef.current.x;
+      setPrefs({ leftPanelWidth: resizeStartRef.current.width + dx });
+    };
+    const onUp = () => {
+      setResizing(false);
+      resizeStartRef.current = null;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [resizing, setPrefs]);
 
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({
     temple: true,
@@ -176,11 +210,54 @@ export function ToolDrawer() {
     roof: 'Tejados',
   };
 
+  if (!leftPanelOpen) {
+    return (
+      <button
+        className="left-reopen-tab"
+        onClick={toggleLeftPanel}
+        title="Abrir panel izquierdo"
+        aria-label="Abrir panel izquierdo"
+      >
+        <PanelLeftOpen size={16} />
+      </button>
+    );
+  }
+
   return (
-    <aside className="tool-drawer" aria-label="Opciones de herramienta">
-      <div className="panel-header">
-        <span>{titleMap[activeTool]}</span>
-      </div>
+    <div className="left-panel-shell" style={{ width: leftPanelWidth }}>
+      <aside className="tool-drawer" aria-label="Opciones de herramienta">
+        <div className="panel-header">
+          <span>{titleMap[activeTool]}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <button
+              className="topbar-btn"
+              style={{ padding: '2px 4px' }}
+              onClick={() => setPrefs({ leftPanelWidth: leftPanelWidth - 36 })}
+              title="Reducir ancho del panel izquierdo"
+              aria-label="Reducir ancho del panel izquierdo"
+            >
+              <Minus size={12} />
+            </button>
+            <button
+              className="topbar-btn"
+              style={{ padding: '2px 4px' }}
+              onClick={() => setPrefs({ leftPanelWidth: leftPanelWidth + 36 })}
+              title="Aumentar ancho del panel izquierdo"
+              aria-label="Aumentar ancho del panel izquierdo"
+            >
+              <Plus size={12} />
+            </button>
+            <button
+              className="topbar-btn"
+              style={{ padding: '2px 4px' }}
+              onClick={toggleLeftPanel}
+              title="Cerrar panel izquierdo"
+              aria-label="Cerrar panel izquierdo"
+            >
+              <PanelLeftClose size={14} />
+            </button>
+          </div>
+        </div>
 
       <div className="panel-scroll">
         {activeTool === 'select' && (
@@ -847,5 +924,17 @@ export function ToolDrawer() {
         )}
       </div>
     </aside>
+      <div
+        className={`left-resize-handle ${resizing ? 'dragging' : ''}`}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          resizeStartRef.current = { x: e.clientX, width: leftPanelWidth };
+          setResizing(true);
+        }}
+        title="Arrastra para redimensionar el panel izquierdo"
+        role="separator"
+        aria-orientation="vertical"
+      />
+    </div>
   );
 }
