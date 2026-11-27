@@ -16,7 +16,6 @@ import {
   Sun,
   Trash2,
 } from 'lucide-react';
-import { getPropDefinition } from '../engine/props';
 import { FLOOR_PATTERNS, ROOF_STYLES, WALL_STYLES } from '../engine/textures';
 import { useMapStore } from '../store/useMapStore';
 import { useUiPrefs } from '../store/useUiPrefs';
@@ -284,14 +283,7 @@ export function RightPanel() {
               </div>
             </div>
 
-            {selectedObject && (() => {
-              const propDef = getPropDefinition(selectedObject.propId, doc.customAssets);
-              const baseW = propDef?.widthTiles ?? 1;
-              const baseH = propDef?.heightTiles ?? 1;
-              const curW = baseW * Math.abs(selectedObject.scaleX);
-              const curH = baseH * Math.abs(selectedObject.scaleY);
-
-              return (
+            {selectedObject && (
               <>
                 <NumberSliderRow
                   label="Rotación"
@@ -314,61 +306,59 @@ export function RightPanel() {
                   <span>{uniformScale ? 'SÍ' : 'NO'}</span>
                 </button>
 
-                <NumberSliderRow
-                  label="Ancho"
-                  value={curW}
-                  min={0.2}
-                  max={15}
-                  step={0.1}
-                  decimals={2}
-                  onChange={(newW) => {
-                    const nextScaleX = Math.max(0.1, newW / baseW);
-                    if (uniformScale) {
-                      const ratio = nextScaleX / Math.max(0.01, Math.abs(selectedObject.scaleX));
-                      const nextScaleY = Math.max(0.1, Math.abs(selectedObject.scaleY) * ratio);
+                {uniformScale ? (
+                  <NumberSliderRow
+                    label="Tamaño"
+                    value={Math.abs(selectedObject.scaleX)}
+                    min={0.25}
+                    max={3.5}
+                    step={0.05}
+                    decimals={2}
+                    suffix="x"
+                    onChange={(v) =>
                       updateSelectedObject(
                         {
-                          scaleX: selectedObject.scaleX < 0 ? -nextScaleX : nextScaleX,
-                          scaleY: selectedObject.scaleY < 0 ? -nextScaleY : nextScaleY,
+                          scaleX: selectedObject.scaleX < 0 ? -v : v,
+                          scaleY: selectedObject.scaleY < 0 ? -v : v,
                         },
                         false
-                      );
-                    } else {
-                      updateSelectedObject(
-                        { scaleX: selectedObject.scaleX < 0 ? -nextScaleX : nextScaleX },
-                        false
-                      );
+                      )
                     }
-                  }}
-                />
-
-                <NumberSliderRow
-                  label="Largo"
-                  value={curH}
-                  min={0.2}
-                  max={15}
-                  step={0.1}
-                  decimals={2}
-                  onChange={(newH) => {
-                    const nextScaleY = Math.max(0.1, newH / baseH);
-                    if (uniformScale) {
-                      const ratio = nextScaleY / Math.max(0.01, Math.abs(selectedObject.scaleY));
-                      const nextScaleX = Math.max(0.1, Math.abs(selectedObject.scaleX) * ratio);
-                      updateSelectedObject(
-                        {
-                          scaleX: selectedObject.scaleX < 0 ? -nextScaleX : nextScaleX,
-                          scaleY: selectedObject.scaleY < 0 ? -nextScaleY : nextScaleY,
-                        },
-                        false
-                      );
-                    } else {
-                      updateSelectedObject(
-                        { scaleY: selectedObject.scaleY < 0 ? -nextScaleY : nextScaleY },
-                        false
-                      );
-                    }
-                  }}
-                />
+                  />
+                ) : (
+                  <>
+                    <NumberSliderRow
+                      label="Ancho (X)"
+                      value={Math.abs(selectedObject.scaleX)}
+                      min={0.25}
+                      max={3.5}
+                      step={0.05}
+                      decimals={2}
+                      suffix="x"
+                      onChange={(v) =>
+                        updateSelectedObject(
+                          { scaleX: selectedObject.scaleX < 0 ? -v : v },
+                          false
+                        )
+                      }
+                    />
+                    <NumberSliderRow
+                      label="Alto (Y)"
+                      value={Math.abs(selectedObject.scaleY)}
+                      min={0.25}
+                      max={3.5}
+                      step={0.05}
+                      decimals={2}
+                      suffix="x"
+                      onChange={(v) =>
+                        updateSelectedObject(
+                          { scaleY: selectedObject.scaleY < 0 ? -v : v },
+                          false
+                        )
+                      }
+                    />
+                  </>
+                )}
 
                 <NumberSliderRow
                   label="Opacidad"
@@ -581,8 +571,7 @@ export function RightPanel() {
                   </div>
                 )}
               </>
-              );
-            })()}
+            )}
             {selectedLight && (
               <>
                 <div className="control-row">
