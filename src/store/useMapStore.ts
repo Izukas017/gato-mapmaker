@@ -32,6 +32,7 @@ import {
   createSanctuaryPreset,
   uid,
 } from '../engine/presets';
+import { useUiPrefs } from './useUiPrefs';
 
 export interface ToolSettings {
   // Terrain
@@ -186,6 +187,16 @@ export function persistDocument(doc: MapDocument): void {
     }
   } catch {
     // Ignore quota or storage errors
+  }
+}
+
+export function clearSavedMap(): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    // ignore
   }
 }
 
@@ -721,6 +732,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSavedDoc: MapDocument | null = null;
 useMapStore.subscribe((state) => {
+  if (!useUiPrefs.getState().autoSaveEnabled) return;
   if (state.doc === lastSavedDoc) return;
   lastSavedDoc = state.doc;
   if (saveTimer) clearTimeout(saveTimer);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowDownToLine,
   ArrowUpToLine,
@@ -8,6 +8,9 @@ import {
   FlipHorizontal,
   FlipVertical,
   Layers,
+  Minus,
+  PanelRightClose,
+  PanelRightOpen,
   Plus,
   SlidersHorizontal,
   Sun,
@@ -15,6 +18,7 @@ import {
 } from 'lucide-react';
 import { FLOOR_PATTERNS, ROOF_STYLES, WALL_STYLES } from '../engine/textures';
 import { useMapStore } from '../store/useMapStore';
+import { useUiPrefs } from '../store/useUiPrefs';
 import type {
   FloorPatternId,
   LayerVisibility,
@@ -108,7 +112,46 @@ export function RightPanel() {
   const duplicateSelected = useMapStore((s) => s.duplicateSelected);
   const deleteSelected = useMapStore((s) => s.deleteSelected);
 
+  const rightPanelOpen = useUiPrefs((s) => s.rightPanelOpen);
+  const rightPanelWidth = useUiPrefs((s) => s.rightPanelWidth);
+  const setPrefs = useUiPrefs((s) => s.setPrefs);
+  const toggleRightPanel = useUiPrefs((s) => s.toggleRightPanel);
+
   const [uniformScale, setUniformScale] = useState(true);
+  const [resizing, setResizing] = useState(false);
+  const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: PointerEvent) => {
+      if (!resizeStartRef.current) return;
+      const dx = resizeStartRef.current.x - e.clientX;
+      setPrefs({ rightPanelWidth: resizeStartRef.current.width + dx });
+    };
+    const onUp = () => {
+      setResizing(false);
+      resizeStartRef.current = null;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [resizing, setPrefs]);
+
+  if (!rightPanelOpen) {
+    return (
+      <button
+        className="right-reopen-tab"
+        onClick={toggleRightPanel}
+        title="Abrir panel derecho"
+        aria-label="Abrir panel derecho"
+      >
+        <PanelRightOpen size={16} />
+      </button>
+    );
+  }
 
   const activeLevel =
     doc.levels.find((l) => l.id === doc.activeLevelId) ?? doc.levels[0];
@@ -143,10 +186,51 @@ export function RightPanel() {
       : null;
 
   return (
-    <aside className="right-panel" aria-label="Inspector y capas">
-      <div className="panel-header">
-        <span>Inspector y Configuración</span>
-      </div>
+    <div className="right-panel-shell" style={{ width: rightPanelWidth }}>
+      <div
+        className={`right-resize-handle ${resizing ? 'dragging' : ''}`}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          resizeStartRef.current = { x: e.clientX, width: rightPanelWidth };
+          setResizing(true);
+        }}
+        title="Arrastra para redimensionar el panel"
+        role="separator"
+        aria-orientation="vertical"
+      />
+      <aside className="right-panel" aria-label="Inspector y capas">
+        <div className="panel-header">
+          <span>Inspector</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <button
+              className="topbar-btn"
+              style={{ padding: '2px 4px' }}
+              onClick={() => setPrefs({ rightPanelWidth: rightPanelWidth - 36 })}
+              title="Reducir ancho del panel"
+              aria-label="Reducir ancho del panel"
+            >
+              <Minus size={12} />
+            </button>
+            <button
+              className="topbar-btn"
+              style={{ padding: '2px 4px' }}
+              onClick={() => setPrefs({ rightPanelWidth: rightPanelWidth + 36 })}
+              title="Aumentar ancho del panel"
+              aria-label="Aumentar ancho del panel"
+            >
+              <Plus size={12} />
+            </button>
+            <button
+              className="topbar-btn"
+              style={{ padding: '2px 4px' }}
+              onClick={toggleRightPanel}
+              title="Cerrar panel derecho"
+              aria-label="Cerrar panel derecho"
+            >
+              <PanelRightClose size={14} />
+            </button>
+          </div>
+        </div>
 
       <div className="panel-scroll">
         {/* Selected Entity Inspector */}
@@ -1026,5 +1110,6 @@ export function RightPanel() {
         </div>
       </div>
     </aside>
+    </div>
   );
 }

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { RotateCcw, Trash2, X } from 'lucide-react';
 import { exportMap } from '../engine/exporter';
 import { TERRAIN_MATERIALS } from '../engine/textures';
-import { useMapStore } from '../store/useMapStore';
+import { clearSavedMap, useMapStore } from '../store/useMapStore';
+import { useUiPrefs } from '../store/useUiPrefs';
 import type { TerrainMaterialId } from '../types/map';
 
 interface NewMapDialogProps {
@@ -112,8 +113,9 @@ interface ExportDialogProps {
 
 export function ExportDialog({ onClose }: ExportDialogProps) {
   const doc = useMapStore((s) => s.doc);
+  const defaultExportPpg = useUiPrefs((s) => s.defaultExportPpg);
   const [format, setFormat] = useState<'png' | 'webp' | 'dd2vtt'>('png');
-  const [ppg, setPpg] = useState(140);
+  const [ppg, setPpg] = useState<number>(defaultExportPpg);
   const [includeGrid, setIncludeGrid] = useState(true);
   const [includeLighting, setIncludeLighting] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -199,6 +201,233 @@ export function ExportDialog({ onClose }: ExportDialogProps) {
             onClick={handleExport}
           >
             {exporting ? 'Exportando...' : 'Descargar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface SettingsDialogProps {
+  onClose: () => void;
+}
+
+export function SettingsDialog({ onClose }: SettingsDialogProps) {
+  const prefs = useUiPrefs();
+  const doc = useMapStore((s) => s.doc);
+  const updateGrid = useMapStore((s) => s.updateGrid);
+  const loadPreset = useMapStore((s) => s.loadPreset);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-card"
+        style={{ width: 500, maxHeight: '86vh', display: 'flex', flexDirection: 'column' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-header">
+          <span>Ajustes del Editor</span>
+          <button type="button" onClick={onClose} aria-label="Cerrar">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="modal-body" style={{ overflowY: 'auto' }}>
+          <div className="section-label" style={{ marginBottom: 0 }}>
+            Interfaz y Paneles
+          </div>
+
+          <button
+            type="button"
+            className={`toggle-btn ${prefs.rightPanelOpen ? 'active' : ''}`}
+            onClick={() => prefs.setPrefs({ rightPanelOpen: !prefs.rightPanelOpen })}
+          >
+            <span>Mostrar panel derecho (Inspector y Capas)</span>
+            <span>{prefs.rightPanelOpen ? 'SÍ' : 'NO'}</span>
+          </button>
+
+          <div className="control-row">
+            <span>Ancho panel derecho</span>
+            <input
+              type="range"
+              min={220}
+              max={520}
+              step={8}
+              value={prefs.rightPanelWidth}
+              onChange={(e) =>
+                prefs.setPrefs({ rightPanelWidth: parseInt(e.target.value, 10) })
+              }
+            />
+            <span className="control-val">{prefs.rightPanelWidth}px</span>
+          </div>
+
+          <div className="control-row">
+            <span>Columnas de objetos</span>
+            <div className="chip-row">
+              {([2, 3, 4] as const).map((cols) => (
+                <button
+                  key={cols}
+                  type="button"
+                  className={`chip ${prefs.propColumns === cols ? 'active' : ''}`}
+                  onClick={() => prefs.setPrefs({ propColumns: cols })}
+                >
+                  {cols === 2 ? 'Grande (2)' : cols === 3 ? 'Normal (3)' : 'Compacto (4)'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className={`toggle-btn ${prefs.showCanvasHints ? 'active' : ''}`}
+            onClick={() => prefs.setPrefs({ showCanvasHints: !prefs.showCanvasHints })}
+          >
+            <span>Mostrar barra de ayudas sobre el lienzo</span>
+            <span>{prefs.showCanvasHints ? 'SÍ' : 'NO'}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`toggle-btn ${prefs.alwaysShowLightHandles ? 'active' : ''}`}
+            onClick={() =>
+              prefs.setPrefs({ alwaysShowLightHandles: !prefs.alwaysShowLightHandles })
+            }
+          >
+            <span>Mostrar siempre iconos de luces</span>
+            <span>{prefs.alwaysShowLightHandles ? 'SÍ' : 'NO'}</span>
+          </button>
+
+          <div className="section-label" style={{ marginTop: 6, marginBottom: 0 }}>
+            Lienzo, Zoom y Exportación
+          </div>
+
+          <div className="control-row">
+            <span>Velocidad de zoom</span>
+            <select
+              value={prefs.zoomSpeed}
+              onChange={(e) =>
+                prefs.setPrefs({
+                  zoomSpeed: e.target.value as 'slow' | 'normal' | 'fast',
+                })
+              }
+              style={{ width: 170 }}
+            >
+              <option value="slow">Suave (preciso)</option>
+              <option value="normal">Normal</option>
+              <option value="fast">Rápido</option>
+            </select>
+          </div>
+
+          <div className="control-row">
+            <span>Resolución exportación por defecto</span>
+            <select
+              value={prefs.defaultExportPpg}
+              onChange={(e) =>
+                prefs.setPrefs({
+                  defaultExportPpg: parseInt(e.target.value, 10) as 70 | 100 | 140,
+                })
+              }
+              style={{ width: 170 }}
+            >
+              <option value={70}>70 px/casilla (Roll20)</option>
+              <option value={100}>100 px/casilla (Foundry)</option>
+              <option value={140}>140 px/casilla (HD)</option>
+            </select>
+          </div>
+
+          <div className="section-label" style={{ marginTop: 6, marginBottom: 0 }}>
+            Cuadrícula del Mapa Actual
+          </div>
+
+          <div className="control-row">
+            <span>Tipo de cuadrícula</span>
+            <select
+              value={doc.grid.type}
+              onChange={(e) => updateGrid({ type: e.target.value as 'square' | 'hex' })}
+              style={{ width: 170 }}
+            >
+              <option value="square">Cuadrada</option>
+              <option value="hex">Hexagonal</option>
+            </select>
+          </div>
+
+          <div className="control-row">
+            <span>Subdivisión del imán</span>
+            <select
+              value={doc.grid.snapSubdivision}
+              onChange={(e) =>
+                updateGrid({
+                  snapSubdivision: parseInt(e.target.value, 10) as 1 | 2 | 4,
+                })
+              }
+              style={{ width: 170 }}
+            >
+              <option value={1}>1 casilla</option>
+              <option value={2}>1/2 casilla</option>
+              <option value={4}>1/4 casilla</option>
+            </select>
+          </div>
+
+          <div className="control-row">
+            <span>Color y opacidad de grilla</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="color"
+                value={doc.grid.color}
+                onChange={(e) => updateGrid({ color: e.target.value })}
+              />
+              <input
+                type="range"
+                min={0.05}
+                max={0.8}
+                step={0.05}
+                value={doc.grid.opacity}
+                onChange={(e) => updateGrid({ opacity: parseFloat(e.target.value) })}
+                style={{ width: 100 }}
+              />
+              <span className="control-val">{Math.round(doc.grid.opacity * 100)}%</span>
+            </div>
+          </div>
+
+          <div className="section-label" style={{ marginTop: 6, marginBottom: 0 }}>
+            Almacenamiento Local
+          </div>
+
+          <button
+            type="button"
+            className={`toggle-btn ${prefs.autoSaveEnabled ? 'active' : ''}`}
+            onClick={() => prefs.setPrefs({ autoSaveEnabled: !prefs.autoSaveEnabled })}
+          >
+            <span>Auto-guardar último mapa en navegador</span>
+            <span>{prefs.autoSaveEnabled ? 'SÍ' : 'NO'}</span>
+          </button>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              onClick={() => prefs.resetPrefs()}
+            >
+              <RotateCcw size={13} /> Restablecer ajustes
+            </button>
+            <button
+              type="button"
+              className="btn-danger"
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              onClick={() => {
+                clearSavedMap();
+                loadPreset('blank');
+              }}
+            >
+              <Trash2 size={13} /> Borrar mapa guardado
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn-primary" onClick={onClose}>
+            Listo
           </button>
         </div>
       </div>

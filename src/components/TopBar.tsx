@@ -6,8 +6,10 @@ import {
   Grid,
   Magnet,
   Map as MapIcon,
+  PanelRight,
   Redo2,
   Save,
+  Settings,
   Sun,
   Undo2,
   ZoomIn,
@@ -15,15 +17,23 @@ import {
 } from 'lucide-react';
 import { saveProjectJson } from '../engine/exporter';
 import { useMapStore } from '../store/useMapStore';
+import { useUiPrefs } from '../store/useUiPrefs';
 import type { MapDocument } from '../types/map';
 
 interface TopBarProps {
   onOpenNewDialog: () => void;
   onOpenExportDialog: () => void;
+  onOpenSettingsDialog: () => void;
 }
 
-export function TopBar({ onOpenNewDialog, onOpenExportDialog }: TopBarProps) {
+export function TopBar({
+  onOpenNewDialog,
+  onOpenExportDialog,
+  onOpenSettingsDialog,
+}: TopBarProps) {
   const doc = useMapStore((s) => s.doc);
+  const rightPanelOpen = useUiPrefs((s) => s.rightPanelOpen);
+  const toggleRightPanel = useUiPrefs((s) => s.toggleRightPanel);
   const pastCount = useMapStore((s) => s.past.length);
   const futureCount = useMapStore((s) => s.future.length);
   const zoom = useMapStore((s) => s.zoom);
@@ -250,6 +260,24 @@ export function TopBar({ onOpenNewDialog, onOpenExportDialog }: TopBarProps) {
         </button>
 
         <div className="topbar-sep" />
+
+        <button
+          className={`topbar-btn ${rightPanelOpen ? 'active' : ''}`}
+          onClick={toggleRightPanel}
+          title="Abrir o cerrar panel derecho"
+        >
+          <PanelRight size={14} />
+          Panel
+        </button>
+
+        <button
+          className="topbar-btn"
+          onClick={onOpenSettingsDialog}
+          title="Ajustes del editor"
+        >
+          <Settings size={14} />
+          Ajustes
+        </button>
 
         <button className="topbar-btn primary" onClick={onOpenExportDialog}>
           <Download size={14} />

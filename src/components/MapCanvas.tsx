@@ -4,6 +4,7 @@ import { uid } from '../engine/presets';
 import { getPropDefinition, getPropSprite } from '../engine/props';
 import { renderMapScene, traceBrushShape } from '../engine/renderer';
 import { useMapStore } from '../store/useMapStore';
+import { useUiPrefs } from '../store/useUiPrefs';
 import type { MapLevel, Point, SelectionRef } from '../types/map';
 
 function pointInPolygon(pt: Point, poly: Point[]): boolean {
@@ -70,6 +71,9 @@ export function MapCanvas() {
   const zoom = useMapStore((s) => s.zoom);
   const panX = useMapStore((s) => s.panX);
   const panY = useMapStore((s) => s.panY);
+  const showCanvasHints = useUiPrefs((s) => s.showCanvasHints);
+  const alwaysShowLightHandles = useUiPrefs((s) => s.alwaysShowLightHandles);
+  const zoomSpeed = useUiPrefs((s) => s.zoomSpeed);
 
   const setViewport = useMapStore((s) => s.setViewport);
   const setSelection = useMapStore((s) => s.setSelection);
@@ -404,7 +408,8 @@ export function MapCanvas() {
       showGrid: doc.layers.grid,
       showLighting: doc.layers.lighting,
       selection,
-      showLightHandles: activeTool === 'light' || activeTool === 'select',
+      showLightHandles:
+        alwaysShowLightHandles || activeTool === 'light' || activeTool === 'select',
       previewTerrainStroke,
       previewWaterStroke,
       onAssetLoaded: () => setRenderTick((t) => t + 1),
@@ -560,6 +565,7 @@ export function MapCanvas() {
     hoverTile,
     draftPoints,
     rectStart,
+    alwaysShowLightHandles,
     renderTick,
   ]);
 
@@ -891,7 +897,8 @@ export function MapCanvas() {
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
 
-    const factor = e.deltaY < 0 ? 1.12 : 0.89;
+    const stepIn = zoomSpeed === 'slow' ? 1.06 : zoomSpeed === 'fast' ? 1.22 : 1.12;
+    const factor = e.deltaY < 0 ? stepIn : 1 / stepIn;
     const nextZoom = Math.max(0.2, Math.min(3.5, zoom * factor));
     const ratio = nextZoom / zoom;
     const nextPanX = mx - (mx - panX) * ratio;
@@ -942,7 +949,7 @@ export function MapCanvas() {
         onWheel={handleWheel}
         onContextMenu={(e) => e.preventDefault()}
       />
-      <div className="canvas-hint-pill">{toolHint}</div>
+      {showCanvasHints && <div className="canvas-hint-pill">{toolHint}</div>}
     </div>
   );
 }

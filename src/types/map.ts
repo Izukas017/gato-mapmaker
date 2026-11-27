@@ -298,13 +298,14 @@ export interface SelectionRef {
 export type PropCategory =
   | 'furniture'
   | 'tavern'
-  | 'rugs'
-  | 'temple'
+  | 'shop'
   | 'dungeon'
+  | 'temple'
   | 'magic'
   | 'storage'
   | 'camp'
   | 'nature'
+  | 'rugs'
   | 'lighting'
   | 'custom';
 

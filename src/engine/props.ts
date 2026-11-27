@@ -1,17 +1,18 @@
 import type { CustomAsset, PropCategory, PropDefinition } from '../types/map';
 
 export const PROP_CATEGORIES: { id: PropCategory; label: string }[] = [
-  { id: 'furniture', label: 'Mobiliario' },
-  { id: 'tavern', label: 'Taberna' },
-  { id: 'rugs', label: 'Alfombras' },
-  { id: 'temple', label: 'Templo' },
-  { id: 'dungeon', label: 'Mazmorra' },
-  { id: 'magic', label: 'Magia' },
-  { id: 'storage', label: 'Almacén' },
-  { id: 'camp', label: 'Campamento' },
-  { id: 'nature', label: 'Naturaleza' },
-  { id: 'lighting', label: 'Antorchas' },
-  { id: 'custom', label: 'Propios' },
+  { id: 'furniture', label: 'Casas y Mobiliario' },
+  { id: 'tavern', label: 'Tabernas y Cocinas' },
+  { id: 'shop', label: 'Tiendas y Comercio' },
+  { id: 'dungeon', label: 'Mazmorras y Trampas' },
+  { id: 'temple', label: 'Templos y Criptas' },
+  { id: 'magic', label: 'Magia y Alquimia' },
+  { id: 'storage', label: 'Almacén y Forja' },
+  { id: 'camp', label: 'Campamentos y Viaje' },
+  { id: 'nature', label: 'Naturaleza y Bosques' },
+  { id: 'rugs', label: 'Alfombras y Tapices' },
+  { id: 'lighting', label: 'Iluminación y Fuego' },
+  { id: 'custom', label: 'Propios (Importados)' },
 ];
 
 export const BUILTIN_PROPS: PropDefinition[] = [
@@ -47,6 +48,14 @@ export const BUILTIN_PROPS: PropDefinition[] = [
   { id: 'roast_spit', name: 'Asador Carne', category: 'tavern', widthTiles: 1.8, heightTiles: 1.1, defaultLayer: 'above_floor', defaultShadow: true, tags: ['asador', 'fuego', 'comida'] },
   { id: 'cauldron_soup', name: 'Olla Guiso', category: 'tavern', widthTiles: 1.1, heightTiles: 1.1, defaultLayer: 'above_floor', defaultShadow: true, tags: ['caldero', 'sopa', 'cocina'] },
   { id: 'wine_rack', name: 'Botellero Vino', category: 'tavern', widthTiles: 1.8, heightTiles: 0.65, defaultLayer: 'above_floor', defaultShadow: true, tags: ['vino', 'bodega', 'botellas'] },
+
+  // Shops & Market
+  { id: 'market_stall_red', name: 'Puesto Mercado Rojo', category: 'shop', widthTiles: 2.6, heightTiles: 1.4, defaultLayer: 'above_walls', defaultShadow: true, tags: ['tienda', 'mercado', 'puesto', 'rojo'] },
+  { id: 'market_stall_blue', name: 'Puesto Mercado Azul', category: 'shop', widthTiles: 2.6, heightTiles: 1.4, defaultLayer: 'above_walls', defaultShadow: true, tags: ['tienda', 'mercado', 'puesto', 'azul'] },
+  { id: 'shop_counter', name: 'Mostrador Tienda', category: 'shop', widthTiles: 2.8, heightTiles: 0.9, defaultLayer: 'above_floor', defaultShadow: true, tags: ['tienda', 'mostrador', 'comercio'] },
+  { id: 'display_case', name: 'Vitrina Joyas', category: 'shop', widthTiles: 1.8, heightTiles: 0.9, defaultLayer: 'above_floor', defaultShadow: true, tags: ['tienda', 'vitrina', 'joyeria'] },
+  { id: 'cloth_bolts', name: 'Rollos de Tela', category: 'shop', widthTiles: 1.4, heightTiles: 1.0, defaultLayer: 'above_floor', defaultShadow: true, tags: ['tienda', 'sastre', 'telas'] },
+  { id: 'potion_shelf', name: 'Estante Pociones', category: 'shop', widthTiles: 1.9, heightTiles: 0.7, defaultLayer: 'above_floor', defaultShadow: true, tags: ['tienda', 'pociones', 'botica'] },
 
   // Rugs
   { id: 'rug_teal', name: 'Alfombra Turquesa', category: 'rugs', widthTiles: 3.2, heightTiles: 2.1, defaultLayer: 'above_floor', defaultShadow: false, tags: ['alfombra', 'rug', 'templo'] },
@@ -2140,6 +2149,90 @@ function renderPropSprite(def: PropDefinition): HTMLCanvasElement {
       ctx.beginPath();
       ctx.arc(cx, cy, r * 1.15, 0, Math.PI * 2);
       ctx.fill();
+      break;
+    }
+
+    case 'market_stall_red':
+    case 'market_stall_blue': {
+      const isBlue = def.id === 'market_stall_blue';
+      const stripe = isBlue ? '#2563eb' : '#b91c1c';
+      ctx.fillStyle = '#5c3c22';
+      ctx.fillRect(6, 6, w - 12, h - 12);
+      const stripes = 6;
+      const sw = (w - 16) / stripes;
+      for (let i = 0; i < stripes; i++) {
+        ctx.fillStyle = i % 2 === 0 ? stripe : '#f3ead8';
+        ctx.fillRect(8 + i * sw, 8, sw, h - 16);
+      }
+      ctx.strokeStyle = '#24160b';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(8, 8, w - 16, h - 16);
+      break;
+    }
+
+    case 'shop_counter': {
+      ctx.fillStyle = '#734b28';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(6, 10, w - 12, h - 20, 4);
+      ctx.fill();
+      ctx.stroke();
+      // Ledger + gold scale
+      ctx.fillStyle = '#efe5cc';
+      ctx.fillRect(20, cy - 12, 34, 24);
+      ctx.fillStyle = '#eab308';
+      ctx.beginPath();
+      ctx.arc(w - 38, cy, 10, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'display_case': {
+      ctx.fillStyle = '#634123';
+      ctx.strokeStyle = '#241509';
+      ctx.lineWidth = 3;
+      ctx.fillRect(6, 8, w - 12, h - 16);
+      ctx.strokeRect(6, 8, w - 12, h - 16);
+      ctx.fillStyle = 'rgba(147, 197, 253, 0.35)';
+      ctx.fillRect(14, 14, w - 28, h - 28);
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(cx - 24, cy, 7, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+      ctx.arc(cx + 24, cy, 7, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+
+    case 'cloth_bolts': {
+      const colors = ['#b91c1c', '#2563eb', '#15803d', '#a16207'];
+      const bw = (w - 20) / colors.length;
+      colors.forEach((col, i) => {
+        ctx.fillStyle = col;
+        ctx.strokeStyle = '#1f1a16';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(10 + i * bw, 12, bw - 3, h - 24, 6);
+        ctx.fill();
+        ctx.stroke();
+      });
+      break;
+    }
+
+    case 'potion_shelf': {
+      ctx.fillStyle = '#5c3b20';
+      ctx.strokeStyle = '#211308';
+      ctx.lineWidth = 3;
+      ctx.fillRect(6, 8, w - 12, h - 16);
+      ctx.strokeRect(6, 8, w - 12, h - 16);
+      const cols = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#eab308', '#06b6d4'];
+      for (let i = 0; i < 8; i++) {
+        ctx.fillStyle = cols[i % cols.length];
+        ctx.beginPath();
+        ctx.arc(18 + i * 20, cy, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
       break;
     }
 

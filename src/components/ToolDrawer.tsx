@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Upload } from 'lucide-react';
+import { ChevronDown, ChevronRight, Upload } from 'lucide-react';
 import { uid } from '../engine/presets';
 import {
   BUILTIN_PROPS,
@@ -14,6 +14,7 @@ import {
   WALL_STYLES,
 } from '../engine/textures';
 import { useMapStore } from '../store/useMapStore';
+import { useUiPrefs } from '../store/useUiPrefs';
 import type {
   BrushShape,
   PathStyleId,
@@ -77,14 +78,25 @@ export function ToolDrawer() {
   const clearTerrainStrokes = useMapStore((s) => s.clearTerrainStrokes);
   const addCustomAsset = useMapStore((s) => s.addCustomAsset);
 
-  const [propCategory, setPropCategory] = useState<PropCategory | 'all'>('all');
+  const propColumns = useUiPrefs((s) => s.propColumns);
+
+  const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({
+    temple: true,
+    magic: true,
+    storage: true,
+    camp: true,
+    nature: true,
+    rugs: true,
+    lighting: true,
+    custom: true,
+  });
   const [propQuery, setPropQuery] = useState('');
   const uploadRef = useRef<HTMLInputElement>(null);
 
   const activeLevel =
     doc.levels.find((l) => l.id === doc.activeLevelId) ?? doc.levels[0];
 
-  const filteredProps = useMemo(() => {
+  const groupedProps = useMemo(() => {
     const customList = doc.customAssets.map((a) => ({
       id: `custom:${a.id}`,
       name: a.name,
@@ -93,19 +105,34 @@ export function ToolDrawer() {
       heightTiles: a.heightTiles,
       defaultLayer: 'above_floor' as PropLayer,
       defaultShadow: true,
-      tags: ['custom'],
+      tags: ['custom', 'propio'],
     }));
     const all = [...BUILTIN_PROPS, ...customList];
     const q = propQuery.trim().toLowerCase();
-    return all.filter((p) => {
-      if (propCategory !== 'all' && p.category !== propCategory) return false;
-      if (!q) return true;
-      return (
-        p.name.toLowerCase().includes(q) ||
-        p.tags.some((t) => t.toLowerCase().includes(q))
-      );
-    });
-  }, [doc.customAssets, propCategory, propQuery]);
+
+    return PROP_CATEGORIES.map((cat) => {
+      const items = all.filter((p) => {
+        if (p.category !== cat.id) return false;
+        if (!q) return true;
+        return (
+          p.name.toLowerCase().includes(q) ||
+          cat.label.toLowerCase().includes(q) ||
+          p.tags.some((t) => t.toLowerCase().includes(q))
+        );
+      });
+      return { ...cat, items };
+    }).filter((g) => g.items.length > 0 || (g.id === 'custom' && !q && doc.customAssets.length > 0));
+  }, [doc.customAssets, propQuery]);
+
+  const toggleCategory = (id: string) => {
+    setCollapsedCats((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const setAllCollapsed = (collapsed: boolean) => {
+    const next: Record<string, boolean> = {};
+    for (const c of PROP_CATEGORIES) next[c.id] = collapsed;
+    setCollapsedCats(next);
+  };
 
   const handleUploadAsset = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -127,7 +154,7 @@ export function ToolDrawer() {
             widthTiles,
             heightTiles,
           });
-          setPropCategory('custom');
+          setCollapsedCats((prev) => ({ ...prev, custom: false }));
         };
         img.src = dataUrl;
       };
@@ -577,28 +604,10 @@ export function ToolDrawer() {
           <>
             <input
               type="search"
-              placeholder="Buscar cama, mesa, árbol, barril..."
+              placeholder="Buscar cama, taberna, tienda, trampa..."
               value={propQuery}
               onChange={(e) => setPropQuery(e.target.value)}
             />
-
-            <div className="chip-row">
-              <button
-                className={`chip ${propCategory === 'all' ? 'active' : ''}`}
-                onClick={() => setPropCategory('all')}
-              >
-                Todos
-              </button>
-              {PROP_CATEGORIES.map((c) => (
-                <button
-                  key={c.id}
-                  className={`chip ${propCategory === c.id ? 'active' : ''}`}
-                  onClick={() => setPropCategory(c.id)}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
 
             <button
               className="btn-secondary"
@@ -650,27 +659,80 @@ export function ToolDrawer() {
               <span>{ts.propScatter ? 'ON' : 'OFF'}</span>
             </button>
 
-            <div className="prop-grid">
-              {filteredProps.map((p) => (
-                <button
-                  key={p.id}
-                  className={`prop-card ${ts.propId === p.id ? 'active' : ''}`}
-                  onClick={() =>
-                    updateTs({
-                      propId: p.id,
-                      propLayer: p.defaultLayer,
-                      propShadow: p.defaultShadow,
-                    })
-                  }
-                >
-                  <div className="prop-thumb">
-                    <img src={getPropThumbnail(p.id, doc.customAssets)} alt={p.name} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                className="btn-secondary"
+                style={{ flex: 1, padding: '4px 6px', fontSize: 11 }}
+                onClick={() => setAllCollapsed(false)}
+              >
+                Descomprimir todo
+              </button>
+              <button
+                className="btn-secondary"
+                style={{ flex: 1, padding: '4px 6px', fontSize: 11 }}
+                onClick={() => setAllCollapsed(true)}
+              >
+                Comprimir todo
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {groupedProps.map((group) => {
+                const isCollapsed = !propQuery.trim() && !!collapsedCats[group.id];
+                return (
+                  <div key={group.id} className="accordion-group">
+                    <button
+                      className="accordion-header"
+                      onClick={() => toggleCategory(group.id)}
+                      aria-expanded={!isCollapsed}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                        {group.label}
+                      </span>
+                      <span className="accordion-count">{group.items.length}</span>
+                    </button>
+                    {!isCollapsed && (
+                      <div className="accordion-body">
+                        <div
+                          className="prop-grid"
+                          style={{
+                            gridTemplateColumns: `repeat(${propColumns}, minmax(0, 1fr))`,
+                          }}
+                        >
+                          {group.items.map((p) => (
+                            <button
+                              key={p.id}
+                              className={`prop-card ${ts.propId === p.id ? 'active' : ''}`}
+                              onClick={() =>
+                                updateTs({
+                                  propId: p.id,
+                                  propLayer: p.defaultLayer,
+                                  propShadow: p.defaultShadow,
+                                })
+                              }
+                            >
+                              <div className="prop-thumb">
+                                <img src={getPropThumbnail(p.id, doc.customAssets)} alt={p.name} />
+                              </div>
+                              <span
+                                style={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  width: '100%',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {p.name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', whiteSpace: 'nowrap' }}>
-                    {p.name}
-                  </span>
-                </button>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
