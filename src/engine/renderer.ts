@@ -1127,13 +1127,48 @@ function drawLighting(
   const mapW = Math.max(1, Math.round(doc.width * ppg));
   const mapH = Math.max(1, Math.round(doc.height * ppg));
   const scale = maxSize ? Math.min(1, maxSize / Math.max(mapW, mapH)) : 1;
-  lightCanvas = getOffscreen(
-    lightCanvas,
-    Math.max(1, Math.round(mapW * scale)),
-    Math.max(1, Math.round(mapH * scale))
-  );
+  const lightW = Math.max(1, Math.round(mapW * scale));
+  const lightH = Math.max(1, Math.round(mapH * scale));
+  const key = [
+    level.rooms,
+    level.walls,
+    level.portals,
+    lightW,
+    lightH,
+    JSON.stringify([allLights, doc.ambient, doc.width, doc.height]),
+  ];
+  if (!lightCanvas || !bloomCanvas || key.some((value, i) => value !== lightKey[i])) {
+    lightKey = key;
+    buildLightmaps(doc, level, allLights, ppg, lightW, lightH);
+  }
+
+  // Multiply lightmap over the scene for rich shadows & warm pools of light,
+  // then a soft warm bloom on top for glowing torches and braziers.
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.drawImage(lightCanvas!, 0, 0, mapW, mapH);
+  ctx.globalCompositeOperation = 'screen';
+  ctx.drawImage(bloomCanvas!, 0, 0, mapW, mapH);
+  ctx.restore();
+}
+
+let bloomCanvas: HTMLCanvasElement | null = null;
+let lightKey: unknown[] = [];
+
+function buildLightmaps(
+  doc: MapDocument,
+  level: MapLevel,
+  allLights: MapLevel['lights'],
+  ppg: number,
+  lightW: number,
+  lightH: number
+) {
+  const mapW = Math.max(1, Math.round(doc.width * ppg));
+  const mapH = Math.max(1, Math.round(doc.height * ppg));
+  lightCanvas = getOffscreen(lightCanvas, lightW, lightH);
+  bloomCanvas = getOffscreen(bloomCanvas, lightW, lightH);
   const lctx = lightCanvas.getContext('2d')!;
-  lctx.setTransform(lightCanvas.width / mapW, 0, 0, lightCanvas.height / mapH, 0, 0);
+  lctx.setTransform(lightW / mapW, 0, 0, lightH / mapH, 0, 0);
 
   const ambRgb = hexToRgb(doc.ambient.color);
   // Ambient brightness: intensity 1 = bright daylight, 0 = dark night
@@ -1186,12 +1221,12 @@ function drawLighting(
     lctx.restore();
   }
 
-  // Multiply lightmap over the scene for rich shadows & warm pools of light
-  ctx.save();
-  ctx.globalCompositeOperation = 'multiply';
-  ctx.drawImage(lightCanvas, 0, 0, mapW, mapH);
-
-  // Soft warm bloom pass on top for glowing torches/braziers (clipped to walls when strictWalls is on)
+  // Bloom pass (clipped to walls when strictWalls is on)
+  const ctx = bloomCanvas.getContext('2d')!;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.clearRect(0, 0, lightW, lightH);
+  ctx.setTransform(lightW / mapW, 0, 0, lightH / mapH, 0, 0);
   ctx.globalCompositeOperation = 'screen';
   allLights.forEach((light, idx) => {
     const poly = lightPolys[idx];
@@ -1213,7 +1248,6 @@ function drawLighting(
     ctx.fill();
     ctx.restore();
   });
-  ctx.restore();
 }
 
 function drawGrid(
@@ -1388,6 +1422,66 @@ function drawSelectionAndHandles(
   }
 }
 
+function drawWalls(
+  ctx: CanvasRenderingContext2D,
+  doc: MapDocument,
+  level: MapLevel,
+  ppg: number
+) {
+  for (const room of level.rooms) {
+    if (!room.wallStyle || room.points.length < 3) continue;
+    drawWallStroke(
+      ctx,
+      room.points,
+      true,
+      room.wallStyle,
+      room.wallThickness,
+      ppg,
+      doc.layers.shadows && room.castShadows
+    );
+  }
+  for (const wall of level.walls) {
+    drawWallStroke(
+      ctx,
+      wall.points,
+      wall.closed,
+      wall.style,
+      wall.thickness,
+      ppg,
+      doc.layers.shadows && wall.castShadows
+    );
+  }
+}
+
+let wallCacheCanvas: HTMLCanvasElement | null = null;
+let wallCacheKey: unknown[] = [];
+
+// Walls only change when they are edited, so painting or moving things reuses their bitmap.
+function drawCachedWalls(
+  ctx: CanvasRenderingContext2D,
+  doc: MapDocument,
+  level: MapLevel,
+  ppg: number
+) {
+  if (level.walls.length === 0 && !level.rooms.some((r) => r.wallStyle)) return;
+  const t = ctx.getTransform();
+  const { width, height } = ctx.canvas;
+  const key = [level.rooms, level.walls, doc.layers.shadows, ppg, t.a, t.d, t.e, t.f, width, height];
+  if (!wallCacheCanvas || key.some((value, i) => value !== wallCacheKey[i])) {
+    wallCacheCanvas = getOffscreen(wallCacheCanvas, width, height);
+    const wctx = wallCacheCanvas.getContext('2d')!;
+    wctx.setTransform(1, 0, 0, 1, 0, 0);
+    wctx.clearRect(0, 0, width, height);
+    wctx.setTransform(t);
+    drawWalls(wctx, doc, level, ppg);
+    wallCacheKey = key;
+  }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(wallCacheCanvas, 0, 0);
+  ctx.restore();
+}
+
 export function renderMapScene(
   ctx: CanvasRenderingContext2D,
   doc: MapDocument,
@@ -1535,29 +1629,8 @@ export function renderMapScene(
 
   // 7. Walls (from rooms + freeform walls)
   if (doc.layers.walls) {
-    for (const room of level.rooms) {
-      if (!room.wallStyle || room.points.length < 3) continue;
-      drawWallStroke(
-        ctx,
-        room.points,
-        true,
-        room.wallStyle,
-        room.wallThickness,
-        ppg,
-        doc.layers.shadows && room.castShadows
-      );
-    }
-    for (const wall of level.walls) {
-      drawWallStroke(
-        ctx,
-        wall.points,
-        wall.closed,
-        wall.style,
-        wall.thickness,
-        ppg,
-        doc.layers.shadows && wall.castShadows
-      );
-    }
+    if (limit) drawCachedWalls(ctx, doc, level, ppg);
+    else drawWalls(ctx, doc, level, ppg);
   }
 
   // 8. Portals (doors & windows)

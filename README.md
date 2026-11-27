@@ -1,4 +1,4 @@
-# Gato MapMaker (`v0.7.1`)
+# Gato MapMaker (`v0.7.2`)
 
 Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) inspirado en el flujo de trabajo de **Dungeondraft**, ejecutándose directamente en el navegador con guardado automático local e iluminación dinámica con sombras en tiempo real.
 
@@ -36,7 +36,7 @@ Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) ins
 | `L` | **Muros libres** | Trazado poligonal con 12 estilos que bloquean la luz. |
 | `P` | **Puertas y ventanas** | 10 tipos que encajan sobre los muros; las abiertas y las ventanas dejan pasar la luz. |
 | `H` | **Caminos y senderos** | 15 estilos (tierra, calzada, puentes, vías, arroyos, lava, vallas, alfombras, setos…) con vista previa. |
-| `O` | **Objetos** | 299 objetos vistos desde arriba, pincel de dispersión e importador de imágenes propias (`.png` / `.webp` / `.svg`). |
+| `O` | **Objetos** | 300 objetos vistos desde arriba, pincel de dispersión e importador de imágenes propias (`.png` / `.webp` / `.svg`). |
 | `I` | **Iluminación dinámica** | Visibilidad 2D con sombras proyectadas por los muros y preajustes de luz ambiental. |
 | `R` | **Tejados** | 8 estilos con cumbrera y sombra. |
 
@@ -50,7 +50,7 @@ Editor de mapas tácticos para juegos de rol de mesa (D&D, Pathfinder, etc.) ins
 
 | Categoría | Nº | Categoría | Nº |
 | --- | --- | --- | --- |
-| Animales y criaturas | 145 | Templos y criptas | 11 |
+| Animales y criaturas | 145 | Templos y criptas | 12 |
 | Casas y mobiliario | 21 | Vallas y cercados | 10 |
 | Pueblo y aldea | 17 | Mazmorras y trampas | 9 |
 | Almacén y forja | 14 | Magia y alquimia | 8 |

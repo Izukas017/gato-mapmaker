@@ -144,6 +144,7 @@ export const BUILTIN_PROPS: PropDefinition[] = [
   { id: 'mat_straw', name: 'Estera Trenzada', category: 'rugs', widthTiles: 2.0, heightTiles: 1.4, defaultLayer: 'above_floor', defaultShadow: false, tags: ['estera', 'paja'] },
 
   // Temple & Crypt
+  { id: 'pyramid_egypt', name: 'Pirámide Egipcia', category: 'temple', widthTiles: 7, heightTiles: 7, defaultLayer: 'above_floor', defaultShadow: true, tags: ['piramide', 'egipto', 'desierto', 'faraon', 'tumba'] },
   { id: 'altar_gold', name: 'Altar Dorado', category: 'temple', widthTiles: 2.4, heightTiles: 2.4, defaultLayer: 'above_floor', defaultShadow: true, tags: ['altar', 'estatua', 'templo'] },
   { id: 'sarcophagus_stone', name: 'Sarcófago Piedra', category: 'temple', widthTiles: 1.3, heightTiles: 2.3, defaultLayer: 'above_floor', defaultShadow: true, tags: ['tumba', 'cripta', 'sarcofago'] },
   { id: 'sarcophagus_gold', name: 'Sarcófago Real', category: 'temple', widthTiles: 1.35, heightTiles: 2.35, defaultLayer: 'above_floor', defaultShadow: true, tags: ['tumba', 'faraon', 'oro'] },
@@ -420,7 +421,13 @@ export function getPropThumbnail(propId: string, customAssets: CustomAsset[] = [
   if (!url) {
     const sprite = getPropSprite(propId);
     if (!sprite) return '';
-    url = sprite.toDataURL('image/png');
+    // The library shows them tiny: encoding a small copy is far cheaper.
+    const scale = Math.min(1, 96 / Math.max(sprite.width, sprite.height));
+    const small = document.createElement('canvas');
+    small.width = Math.max(1, Math.round(sprite.width * scale));
+    small.height = Math.max(1, Math.round(sprite.height * scale));
+    small.getContext('2d')!.drawImage(sprite, 0, 0, small.width, small.height);
+    url = small.toDataURL('image/png');
     thumbCache.set(propId, url);
   }
   return url;

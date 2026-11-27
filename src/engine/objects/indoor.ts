@@ -4,6 +4,8 @@ import {
   metal, OAK, PALEWOOD, type Painter, plain, STEEL, stone, straw, WATER, wood,
 } from './kit';
 
+type RGB = [number, number, number];
+
 const TAU = Math.PI * 2;
 const around = (count: number, radius: number, draw: (x: number, y: number, a: number, i: number) => void) => {
   for (let i = 0; i < count; i++) {
@@ -85,6 +87,90 @@ function sarcophagus(k: Kit, shell: typeof GRANITE, lid: typeof GRANITE, gem: st
 function columnBase(k: Kit) {
   k.rect(0.04, 0.04, 0.92, 0.92, stone('#b9b3a6'), 0.08, { shadow: true });
   k.rect(0.1, 0.1, 0.8, 0.8, MARBLE, 0.06);
+}
+
+// Stepped sandstone pyramid with a golden capstone and its entrance on the lower face.
+// Painted directly: at this size the kit's thick outlines would swallow the steps.
+function pyramid(k: Kit) {
+  const { ctx, W, H } = k;
+  type P = [number, number];
+  const shape = (points: P[], fill: string, line = 'rgba(80,52,16,0.55)') => {
+    ctx.beginPath();
+    points.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x * W, y * H) : ctx.lineTo(x * W, y * H)));
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = line;
+    ctx.lineWidth = W * 0.0022;
+    ctx.stroke();
+  };
+  const segment = (from: P, to: P, color: string, width: number) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = W * width;
+    ctx.beginPath();
+    ctx.moveTo(from[0] * W, from[1] * H);
+    ctx.lineTo(to[0] * W, to[1] * H);
+    ctx.stroke();
+  };
+  const square = (r: number): P[] => [[0.5 - r, 0.5 - r], [0.5 + r, 0.5 - r], [0.5 + r, 0.5 + r], [0.5 - r, 0.5 + r]];
+
+  // Drifted sand and the long shadow towards the south-east
+  k.lump(0.5, 0.51, 0.49, plain('#d8bc80'), 24, 0.03, { edge: false });
+  const base = 0.43;
+  const top = 0.06;
+  shape([[0.5 + base, 0.5 - base], [0.985, 0.2], [0.985, 0.985], [0.2, 0.985], [0.5 - base, 0.5 + base], [0.5 + base, 0.5 + base]], 'rgba(70,45,15,0.35)', 'rgba(0,0,0,0)');
+
+  const courses = 13;
+  const faces: RGB[] = [[240, 214, 152], [222, 190, 122], [166, 132, 80], [190, 155, 96]]; // N, W, E, S
+  for (let i = 0; i < courses; i++) {
+    const outer = base - ((base - top) * i) / courses;
+    const inner = base - ((base - top) * (i + 1)) / courses;
+    const o = square(outer);
+    const n = square(inner);
+    for (const [a, b, face] of [[0, 1, 0], [3, 0, 1], [1, 2, 2], [2, 3, 3]]) {
+      const blocks = Math.max(1, Math.round(outer * 22));
+      for (let j = 0; j < blocks; j++) {
+        const shift = (i % 2) * 0.5;
+        const t0 = Math.max(0, (j - shift) / blocks);
+        const t1 = j === blocks - 1 ? 1 : (j + 1 - shift) / blocks;
+        const at = (p: P[], t: number): P => [p[a][0] + (p[b][0] - p[a][0]) * t, p[a][1] + (p[b][1] - p[a][1]) * t];
+        const tone = Math.round(k.between(-13, 13) + i * 1.2);
+        const [r, g, bl] = faces[face];
+        shape([at(o, t0), at(o, t1), at(n, t1), at(n, t0)], `rgb(${r + tone},${g + tone},${bl + tone})`);
+        if (k.rand() > 0.8) {
+          const m = at(o, (t0 + t1) / 2);
+          const q = at(n, (t0 + t1) / 2);
+          k.dot((m[0] + q[0]) / 2, (m[1] + q[1]) / 2, 0.004, 'rgba(90,60,20,0.5)');
+        }
+      }
+      // Lit lip and shadow of each step
+      segment(n[a], n[b], face < 2 ? 'rgba(255,248,214,0.85)' : 'rgba(255,232,180,0.35)', 0.004);
+      segment(o[a], o[b], 'rgba(60,38,10,0.4)', 0.0035);
+    }
+  }
+  // Ridges running to the summit
+  square(base).forEach((corner, i) => segment(corner, square(top)[i], 'rgba(74,48,14,0.75)', 0.005));
+  const cap = square(top);
+  k.glow(0.5, 0.5, 0.15, '#ffe27a', 0.55);
+  ['#ffe89a', '#a87a1c', '#c79628', '#ecc24a'].forEach((c, i) => shape([cap[i], cap[(i + 1) % 4], [0.5, 0.5]], c, 'rgba(110,74,8,0.9)'));
+  k.stud(0.485, 0.482, 0.01, '#fff6c0');
+
+  // Entrance corridor, jambs and lintel
+  shape([[0.438, 0.8], [0.562, 0.8], [0.578, 0.955], [0.422, 0.955]], '#d9b877');
+  shape([[0.468, 0.835], [0.532, 0.835], [0.532, 0.955], [0.468, 0.955]], '#1a0f05');
+  for (const x of [0.444, 0.532]) shape([[x, 0.822], [x + 0.024, 0.822], [x + 0.024, 0.962], [x, 0.962]], '#ecd096');
+  shape([[0.428, 0.795], [0.572, 0.795], [0.566, 0.83], [0.434, 0.83]], '#d3a334');
+  k.stud(0.5, 0.812, 0.011, '#2f8fd0');
+  for (let j = 0; j < 8; j++) segment([0.442 + j * 0.017, 0.802], [0.442 + j * 0.017, 0.822], 'rgba(120,80,10,0.8)', 0.003);
+  for (const x of [0.395, 0.605]) {
+    k.disc(x, 0.945, 0.02, gold('#b8892a'));
+    k.glow(x, 0.945, 0.055, '#ff9a2c', 0.85);
+    k.flame(x, 0.945, 0.014);
+  }
+  // Fallen blocks
+  for (const [x, y, r] of [[0.05, 0.84, 0.02], [0.09, 0.92, 0.012], [0.94, 0.09, 0.017], [0.07, 0.09, 0.012]]) {
+    shape([[x - r, y - r * 0.7], [x + r * 0.8, y - r], [x + r, y + r * 0.6], [x - r * 0.7, y + r]], '#c9a868', 'rgba(50,30,8,0.9)');
+  }
 }
 
 export const INDOOR: Record<string, Painter> = {
@@ -291,6 +377,7 @@ export const INDOOR: Record<string, Painter> = {
   },
 
   // ---------- Temple ----------
+  pyramid_egypt: (k) => pyramid(k),
   altar_gold: (k) => {
     k.disc(0.5, 0.5, 0.49, stone('#a59d8c'), { shadow: true });
     k.disc(0.5, 0.5, 0.41, MARBLE, { shadow: true });
