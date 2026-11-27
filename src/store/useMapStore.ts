@@ -140,6 +140,42 @@ interface MapStoreState {
 }
 
 const MAX_HISTORY = 40;
+const STORAGE_KEY = 'gato_mapmaker_last_map_v1';
+
+export function loadInitialDocument(): MapDocument {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as MapDocument;
+        if (
+          parsed &&
+          Array.isArray(parsed.levels) &&
+          parsed.levels.length > 0 &&
+          typeof parsed.width === 'number' &&
+          parsed.width > 0 &&
+          typeof parsed.height === 'number' &&
+          parsed.height > 0
+        ) {
+          return parsed;
+        }
+      }
+    }
+  } catch {
+    // Ignore storage read/parse errors and fall back to a blank map
+  }
+  return createBlankMap();
+}
+
+export function persistDocument(doc: MapDocument): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(doc));
+    }
+  } catch {
+    // Ignore quota or storage errors
+  }
+}
 
 function updateActiveLevel(
   doc: MapDocument,
@@ -164,7 +200,7 @@ function pushCommit(
 }
 
 export const useMapStore = create<MapStoreState>((set, get) => ({
-  doc: createSanctuaryPreset(),
+  doc: loadInitialDocument(),
   past: [],
   future: [],
   activeTool: 'select',
@@ -608,3 +644,15 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       return { ...pushCommit(s, next), selection: null };
     }),
 }));
+
+// Auto-save the active map to localStorage whenever the document changes
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSavedDoc: MapDocument | null = null;
+useMapStore.subscribe((state) => {
+  if (state.doc === lastSavedDoc) return;
+  lastSavedDoc = state.doc;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    persistDocument(state.doc);
+  }, 200);
+});

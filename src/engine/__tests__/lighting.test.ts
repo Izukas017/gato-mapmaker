@@ -41,4 +41,12 @@ describe('Lighting & Occlusion Engine', () => {
     expect(quarter.levels[0].rooms.length).toBeGreaterThan(4);
     expect(quarter.levels[0].roofs.length).toBeGreaterThan(0);
   });
+
+  it('defaults to a blank map when no saved map exists in storage', async () => {
+    const { loadInitialDocument } = await import('../../store/useMapStore');
+    const doc = loadInitialDocument();
+    expect(doc.name).toBe('Nuevo Mapa');
+    expect(doc.levels[0].rooms.length).toBe(0);
+    expect(doc.levels[0].objects.length).toBe(0);
+  });
 });
