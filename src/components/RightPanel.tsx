@@ -978,7 +978,7 @@ export function RightPanel() {
             />
             <span className="control-val">{Math.round(doc.ambient.intensity * 100)}%</span>
           </div>
-          <div className="control-row">
+          <div className="control-row" style={{ marginBottom: 6 }}>
             <span>Tono Ambiental</span>
             <input
               type="color"
@@ -986,6 +986,17 @@ export function RightPanel() {
               onChange={(e) => updateAmbient({ color: e.target.value, enabled: true })}
             />
           </div>
+          <button
+            className={`toggle-btn ${(doc.ambient.strictWallBlocking ?? true) ? 'active' : ''}`}
+            onClick={() =>
+              updateAmbient({
+                strictWallBlocking: !(doc.ambient.strictWallBlocking ?? true),
+              })
+            }
+          >
+            <span>Muros bloquean luz al 100%</span>
+            <span>{(doc.ambient.strictWallBlocking ?? true) ? 'SÍ' : 'NO'}</span>
+          </button>
         </div>
 
         {/* General Map & Grid Configuration */}

@@ -46,6 +46,7 @@ export function defaultAmbient(): AmbientSettings {
     enabled: true,
     color: '#9db1cc',
     intensity: 0.62,
+    strictWallBlocking: true,
     sunEnabled: false,
     sunAngle: 35,
     sunShadowLength: 0.4,

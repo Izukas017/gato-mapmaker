@@ -117,7 +117,7 @@ function raySegmentIntersect(
   const t = (qpx * sdy - qpy * sdx) / denom;
   const u = (qpx * rdy - qpy * rdx) / denom;
 
-  if (t >= 0 && u >= -1e-4 && u <= 1 + 1e-4) {
+  if (t >= 0 && u >= -1e-6 && u <= 1 + 1e-6) {
     return t;
   }
   return null;
@@ -163,16 +163,24 @@ export function computeVisibilityPolygon(
     active.push(s);
   }
 
-  // Collect ray angles towards every segment endpoint (with tiny +/- jitter)
-  const angles: number[] = [];
+  // Collect & deduplicate ray angles towards segment endpoints
+  const rawAngles: number[] = [];
   const eps = 0.0004;
   for (const s of active) {
     const a1 = Math.atan2(s.ay - oy, s.ax - ox);
     const a2 = Math.atan2(s.by - oy, s.bx - ox);
-    angles.push(a1 - eps, a1, a1 + eps, a2 - eps, a2, a2 + eps);
+    rawAngles.push(a1 - eps, a1, a1 + eps, a2 - eps, a2, a2 + eps);
+  }
+  rawAngles.sort((a, b) => a - b);
+
+  const angles: number[] = [];
+  for (const a of rawAngles) {
+    if (angles.length === 0 || a - angles[angles.length - 1] > 1e-5) {
+      angles.push(a);
+    }
   }
 
-  const hits: { angle: number; x: number; y: number }[] = [];
+  const hits: Point[] = [];
   for (const angle of angles) {
     const rdx = Math.cos(angle);
     const rdy = Math.sin(angle);
@@ -185,14 +193,68 @@ export function computeVisibilityPolygon(
       }
     }
     hits.push({
-      angle,
       x: ox + rdx * closest,
       y: oy + rdy * closest,
     });
   }
 
-  hits.sort((a, b) => a.angle - b.angle);
-  return hits.map((h) => ({ x: h.x, y: h.y }));
+  return hits;
+}
+
+// Per-level occluder & visibility polygon caches to avoid redundant raycasting
+let cachedOccluderKey: {
+  rooms: MapLevel['rooms'];
+  walls: MapLevel['walls'];
+  portals: MapLevel['portals'];
+  segments: Segment[];
+} | null = null;
+
+const polyCache = new Map<
+  string,
+  { x: number; y: number; radius: number; poly: Point[] }
+>();
+
+export function getCachedOccluders(level: MapLevel): Segment[] {
+  if (
+    cachedOccluderKey &&
+    cachedOccluderKey.rooms === level.rooms &&
+    cachedOccluderKey.walls === level.walls &&
+    cachedOccluderKey.portals === level.portals
+  ) {
+    return cachedOccluderKey.segments;
+  }
+  const segments = extractOccluderSegments(level);
+  cachedOccluderKey = {
+    rooms: level.rooms,
+    walls: level.walls,
+    portals: level.portals,
+    segments,
+  };
+  polyCache.clear();
+  return segments;
+}
+
+export function getCachedVisibilityPolygon(
+  light: LightSource,
+  occluders: Segment[]
+): Point[] {
+  const prev = polyCache.get(light.id);
+  if (
+    prev &&
+    prev.x === light.x &&
+    prev.y === light.y &&
+    prev.radius === light.radius
+  ) {
+    return prev.poly;
+  }
+  const poly = computeVisibilityPolygon(light, occluders);
+  polyCache.set(light.id, {
+    x: light.x,
+    y: light.y,
+    radius: light.radius,
+    poly,
+  });
+  return poly;
 }
 
 export function hexToRgb(hex: string): { r: number; g: number; b: number } {

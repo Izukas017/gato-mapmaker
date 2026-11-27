@@ -254,6 +254,7 @@ export interface AmbientSettings {
   enabled: boolean;
   color: string; // e.g. #2c354d for dusk/night or #ffffff for day
   intensity: number; // 0 (pitch black) .. 1 (full daylight)
+  strictWallBlocking?: boolean;
   sunEnabled: boolean;
   sunAngle: number; // degrees
   sunShadowLength: number; // 0..1

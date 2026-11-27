@@ -14,8 +14,8 @@ import type {
   WaterStroke,
 } from '../types/map';
 import {
-  computeVisibilityPolygon,
-  extractOccluderSegments,
+  getCachedOccluders,
+  getCachedVisibilityPolygon,
   hexToRgb,
 } from './lighting';
 import {
@@ -42,6 +42,18 @@ let lightCanvas: HTMLCanvasElement | null = null;
 let waterCanvas: HTMLCanvasElement | null = null;
 let strokeMaskCanvas: HTMLCanvasElement | null = null;
 let tintCanvas: HTMLCanvasElement | null = null;
+let terrainCacheCanvas: HTMLCanvasElement | null = null;
+let terrainCacheState: {
+  levelId: string;
+  width: number;
+  height: number;
+  ppg: number;
+  terrainBase: string;
+  terrainStrokes: MapLevel['terrainStrokes'];
+  waterStrokes: MapLevel['waterStrokes'];
+  showTerrain: boolean;
+  showWater: boolean;
+} | null = null;
 
 function getOffscreen(
   existing: HTMLCanvasElement | null,
@@ -939,10 +951,13 @@ function drawLighting(
   lctx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
   lctx.fillRect(0, 0, mapW, mapH);
 
-  const occluders = extractOccluderSegments(level);
+  const strictWalls = doc.ambient.strictWallBlocking ?? true;
+  const occluders = getCachedOccluders(level);
 
   // Additive light accumulation onto lightmap
   lctx.globalCompositeOperation = 'lighter';
+
+  const lightPolys: (Point[] | null)[] = [];
 
   for (const light of allLights) {
     const rgb = hexToRgb(light.color);
@@ -950,13 +965,16 @@ function drawLighting(
     const lx = light.x * ppg;
     const ly = light.y * ppg;
 
+    let poly: Point[] | null = null;
+    if ((strictWalls || light.castShadows) && occluders.length > 0) {
+      poly = getCachedVisibilityPolygon(light, occluders);
+    }
+    lightPolys.push(poly);
+
     lctx.save();
-    if (light.castShadows && occluders.length > 0) {
-      const poly = computeVisibilityPolygon(light, occluders);
-      if (poly.length >= 3) {
-        tracePolygon(lctx, poly, ppg);
-        lctx.clip();
-      }
+    if (poly && poly.length >= 3) {
+      tracePolygon(lctx, poly, ppg);
+      lctx.clip();
     }
 
     const grad = lctx.createRadialGradient(lx, ly, rPx * 0.04, lx, ly, rPx);
@@ -978,13 +996,19 @@ function drawLighting(
   ctx.globalCompositeOperation = 'multiply';
   ctx.drawImage(lightCanvas, 0, 0);
 
-  // Soft warm bloom pass on top for glowing torches/braziers
+  // Soft warm bloom pass on top for glowing torches/braziers (clipped to walls when strictWalls is on)
   ctx.globalCompositeOperation = 'screen';
-  for (const light of allLights) {
+  allLights.forEach((light, idx) => {
+    const poly = lightPolys[idx];
     const rgb = hexToRgb(light.color);
     const rPx = light.radius * ppg * 0.55;
     const lx = light.x * ppg;
     const ly = light.y * ppg;
+    ctx.save();
+    if (strictWalls && poly && poly.length >= 3) {
+      tracePolygon(ctx, poly, ppg);
+      ctx.clip();
+    }
     const grad = ctx.createRadialGradient(lx, ly, 0, lx, ly, rPx);
     grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${Math.min(0.42, 0.25 * light.intensity)})`);
     grad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
@@ -992,7 +1016,8 @@ function drawLighting(
     ctx.beginPath();
     ctx.arc(lx, ly, rPx, 0, Math.PI * 2);
     ctx.fill();
-  }
+    ctx.restore();
+  });
   ctx.restore();
 }
 
@@ -1175,17 +1200,79 @@ export function renderMapScene(
   ctx.rect(0, 0, mapW, mapH);
   ctx.clip();
 
-  // 1. Terrain
-  if (doc.layers.terrain) {
-    drawTerrain(ctx, doc, level, ppg, options.previewTerrainStroke);
-  } else {
-    ctx.fillStyle = '#1d2027';
-    ctx.fillRect(0, 0, mapW, mapH);
-  }
+  // 1 & 2. Cached Terrain + Water layer (blits in <1ms when not actively painting)
+  const cacheW = Math.max(1, Math.round(mapW));
+  const cacheH = Math.max(1, Math.round(mapH));
+  const hasLiveWaterPreview = Boolean(options.previewWaterStroke);
 
-  // 2. Water
-  if (doc.layers.water) {
-    drawWater(ctx, doc, level, ppg, options.previewWaterStroke);
+  if (
+    !hasLiveWaterPreview &&
+    cacheW <= 4096 &&
+    cacheH <= 4096
+  ) {
+    const cacheValid =
+      terrainCacheCanvas &&
+      terrainCacheState &&
+      terrainCacheState.levelId === level.id &&
+      terrainCacheState.width === doc.width &&
+      terrainCacheState.height === doc.height &&
+      Math.abs(terrainCacheState.ppg - ppg) < 0.001 &&
+      terrainCacheState.terrainBase === level.terrainBase &&
+      terrainCacheState.terrainStrokes === level.terrainStrokes &&
+      terrainCacheState.waterStrokes === level.waterStrokes &&
+      terrainCacheState.showTerrain === doc.layers.terrain &&
+      terrainCacheState.showWater === doc.layers.water;
+
+    if (!cacheValid) {
+      const tc = getOffscreen(terrainCacheCanvas, cacheW, cacheH);
+      terrainCacheCanvas = tc;
+      const tctx = tc.getContext('2d')!;
+      tctx.clearRect(0, 0, cacheW, cacheH);
+      if (doc.layers.terrain) {
+        drawTerrain(tctx, doc, level, ppg, null);
+      } else {
+        tctx.fillStyle = '#1d2027';
+        tctx.fillRect(0, 0, cacheW, cacheH);
+      }
+      if (doc.layers.water) {
+        drawWater(tctx, doc, level, ppg, null);
+      }
+      terrainCacheState = {
+        levelId: level.id,
+        width: doc.width,
+        height: doc.height,
+        ppg,
+        terrainBase: level.terrainBase,
+        terrainStrokes: level.terrainStrokes,
+        waterStrokes: level.waterStrokes,
+        showTerrain: doc.layers.terrain,
+        showWater: doc.layers.water,
+      };
+    }
+
+    if (terrainCacheCanvas) {
+      ctx.drawImage(terrainCacheCanvas, 0, 0);
+    }
+    if (options.previewTerrainStroke && doc.layers.terrain) {
+      drawTerrainStrokeFeathered(
+        ctx,
+        options.previewTerrainStroke,
+        mapW,
+        mapH,
+        ppg,
+        ppg / 128
+      );
+    }
+  } else {
+    if (doc.layers.terrain) {
+      drawTerrain(ctx, doc, level, ppg, options.previewTerrainStroke);
+    } else {
+      ctx.fillStyle = '#1d2027';
+      ctx.fillRect(0, 0, mapW, mapH);
+    }
+    if (doc.layers.water) {
+      drawWater(ctx, doc, level, ppg, options.previewWaterStroke);
+    }
   }
 
   // 3. Objects below floor

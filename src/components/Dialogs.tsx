@@ -321,6 +321,19 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
             <span>{prefs.alwaysShowLightHandles ? 'SÍ' : 'NO'}</span>
           </button>
 
+          <button
+            type="button"
+            className={`toggle-btn ${(doc.ambient.strictWallBlocking ?? true) ? 'active' : ''}`}
+            onClick={() =>
+              useMapStore.getState().updateAmbient({
+                strictWallBlocking: !(doc.ambient.strictWallBlocking ?? true),
+              })
+            }
+          >
+            <span>Paredes bloquean totalmente la luz</span>
+            <span>{(doc.ambient.strictWallBlocking ?? true) ? 'SÍ' : 'NO'}</span>
+          </button>
+
           <div className="section-label" style={{ marginTop: 6, marginBottom: 0 }}>
             Lienzo, Zoom y Exportación
           </div>
